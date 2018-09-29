@@ -17,9 +17,9 @@ def is_num(s):
 def is_hex(s):
     return re.match(r"^0x[0-9a-fA-F]+$", s or "") is not None
 
-class DisplayNumberCommand(sublime_plugin.TextCommand):
-    def run(self, edit):
-        selected = self.view.substr(self.view.sel()[0]).strip()
+class DisplayNumberCommand(sublime_plugin.EventListener):
+    def on_selection_modified(self, view):
+        selected = view.substr(view.sel()[0]).strip()
 
         if is_num(selected):
             selected = int(selected, 10)
@@ -47,4 +47,4 @@ class DisplayNumberCommand(sublime_plugin.TextCommand):
             format_str(oct(selected)[2:], 3)
         )
 
-        self.view.show_popup(html, max_width=512, on_navigate=lambda x: copy(self.view, x))
+        view.show_popup(html, max_width=512, on_navigate=lambda x: copy(self.view, x))
