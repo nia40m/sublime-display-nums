@@ -3,10 +3,11 @@ import sublime_plugin
 
 import re
 
-def format_str(string, num):
-    res = ""
+def format_str(string, num, separator=" "):
+    res = string[-num:]
+    string = string[:-num]
     while (len(string)):
-        res = string[-num:] + " " + res
+        res = string[-num:] + separator + res
         string = string[:-num]
 
     return res
@@ -41,7 +42,7 @@ class DisplayNumberCommand(sublime_plugin.EventListener):
                 <div>Oct: %s</div>
             </body>
         """ % (
-            format_str(str(selected), 3),
+            format_str(str(selected), 3, ","),
             format_str(hex(selected)[2:], 2),
             format_str(bin(selected)[2:], 4),
             format_str(oct(selected)[2:], 3)
