@@ -3,6 +3,10 @@ import sublime_plugin
 
 import re
 
+dec_re = re.compile(r"^[1-9][0-9]*(u|l|ul|lu|ull|llu)?$", re.I)
+hex_re = re.compile(r"^0x[0-9a-f]+(u|l|ul|lu|ull|llu)?$", re.I)
+oct_re = re.compile(r"^0[0-7]*(u|l|ul|lu|ull|llu)?$", re.I)
+
 def format_str(string, num, separator=" "):
     res = string[-num:]
     string = string[:-num]
@@ -13,13 +17,13 @@ def format_str(string, num, separator=" "):
     return res
 
 def is_num(s):
-    return re.match(r"^[1-9][0-9]*(u|l|ul|lu|ull|llu)?$", s or "", re.I) is not None
+    return dec_re.match(s or "") is not None
 
 def is_hex(s):
-    return re.match(r"^0x[0-9a-f]+(u|l|ul|lu|ull|llu)?$", s or "", re.I) is not None
+    return hex_re.match(s or "") is not None
 
 def is_oct(s):
-    return re.match(r"^0[0-7]*(u|l|ul|lu|ull|llu)?$", s or "", re.I) is not None
+    return oct_re.match(s or "") is not None
 
 class DisplayNumberCommand(sublime_plugin.EventListener):
     def on_selection_modified(self, view):
