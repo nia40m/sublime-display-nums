@@ -3,9 +3,9 @@ import sublime_plugin
 
 import re
 
-dec_re = re.compile(r"^[1-9][0-9]*(u|l|ul|lu|ull|llu)?$", re.I)
-hex_re = re.compile(r"^0x[0-9a-f]+(u|l|ul|lu|ull|llu)?$", re.I)
-oct_re = re.compile(r"^0[0-7]*(u|l|ul|lu|ull|llu)?$", re.I)
+dec_re = re.compile(r"^([1-9][0-9]*)(u|l|ul|lu|ull|llu)?$", re.I)
+hex_re = re.compile(r"^0x([0-9a-f]+)(u|l|ul|lu|ull|llu)?$", re.I)
+oct_re = re.compile(r"^(0[0-7]*)(u|l|ul|lu|ull|llu)?$", re.I)
 
 def format_str(string, num, separator=" "):
     res = string[-num:]
@@ -16,27 +16,26 @@ def format_str(string, num, separator=" "):
 
     return res
 
-def is_num(s):
-    return dec_re.match(s or "") is not None
+def parse_number(text):
+    match = dec_re.match(text)
+    if match:
+        return int(match.group(1), 10)
 
-def is_hex(s):
-    return hex_re.match(s or "") is not None
+    match = hex_re.match(text)
+    if match:
+        return int(match.group(1), 16)
 
-def is_oct(s):
-    return oct_re.match(s or "") is not None
+    match = oct_re.match(text)
+    if match:
+        return int(match.group(1), 8)
 
 class DisplayNumberCommand(sublime_plugin.EventListener):
     def on_selection_modified(self, view):
         selected = view.substr(view.sel()[0]).strip()
 
-        if is_num(selected):
-            selected = int(selected.rstrip("uUlL"), 10)
-        elif is_hex(selected):
-            selected = int(selected.rstrip("uUlL"), 16)
-        elif is_oct(selected):
-            selected = int(selected.rstrip("uUlL"), 8)
-        else:
-            return False
+        selected = parse_number(selected)
+        if selected is None:
+            return
 
         html = """
             <body id=show>
