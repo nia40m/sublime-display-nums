@@ -36,7 +36,7 @@ class DisplayNumberCommand(sublime_plugin.EventListener):
 
         html = """
             <body id=show>
-                <div>Int: %s</div>
+                <div>Dec: %s</div>
                 <div>Hex: %s</div>
                 <div>Bin: %s</div>
                 <div>Oct: %s</div>
