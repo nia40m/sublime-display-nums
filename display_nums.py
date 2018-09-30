@@ -45,10 +45,10 @@ class DisplayNumberCommand(sublime_plugin.EventListener):
                 <div>Oct: %s</div>
             </body>
         """ % (
-            format_str(str(selected), 3, ","),
-            format_str(hex(selected)[2:], 2),
-            format_str(bin(selected)[2:], 4),
-            format_str(oct(selected)[2:], 3)
+            format_str("{}".format(selected), 3, ","),
+            format_str("{:x}".format(selected), 2),
+            format_str("{:b}".format(selected), 4),
+            format_str("{:o}".format(selected), 3)
         )
 
         view.show_popup(html, max_width=512)
