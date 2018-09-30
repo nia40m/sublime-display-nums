@@ -13,24 +13,24 @@ def format_str(string, num, separator=" "):
     return res
 
 def is_num(s):
-    return re.match(r"^[1-9][0-9]*$", s or "") is not None
+    return re.match(r"^[1-9][0-9]*(u|l|ul|lu|ull|llu)?$", s or "", re.I) is not None
 
 def is_hex(s):
-    return re.match(r"^0x[0-9a-fA-F]+$", s or "") is not None
+    return re.match(r"^0x[0-9a-f]+(u|l|ul|lu|ull|llu)?$", s or "", re.I) is not None
 
 def is_oct(s):
-    return re.match(r"^0[0-7]*$", s or "") is not None
+    return re.match(r"^0[0-7]*(u|l|ul|lu|ull|llu)?$", s or "", re.I) is not None
 
 class DisplayNumberCommand(sublime_plugin.EventListener):
     def on_selection_modified(self, view):
         selected = view.substr(view.sel()[0]).strip()
 
         if is_num(selected):
-            selected = int(selected, 10)
+            selected = int(selected.rstrip("uUlL"), 10)
         elif is_hex(selected):
-            selected = int(selected, 16)
+            selected = int(selected.rstrip("uUlL"), 16)
         elif is_oct(selected):
-            selected = int(selected, 8)
+            selected = int(selected.rstrip("uUlL"), 8)
         else:
             return False
 
