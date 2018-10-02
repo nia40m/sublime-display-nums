@@ -2,6 +2,7 @@ import sublime
 import sublime_plugin
 
 import re
+import json
 
 dec_re = re.compile(r"^([1-9][0-9]*)(u|l|ul|lu|ull|llu)?$", re.I)
 hex_re = re.compile(r"^0x([0-9a-f]+)(u|l|ul|lu|ull|llu)?$", re.I)
@@ -44,16 +45,33 @@ class DisplayNumberListener(sublime_plugin.EventListener):
 
         html = """
             <body id=show>
-                <div>Dec: %s</div>
-                <div>Hex: %s</div>
-                <div>Bin: %s</div>
-                <div>Oct: %s</div>
+                <div><a href='{{\"num\":{0},\"base\":10}}'>Dec</a>: {1}</div>
+                <div><a href='{{\"num\":{0},\"base\":16}}'>Hex</a>: {2}</div>
+                <div><a href='{{\"num\":{0},\"base\":2}}'>Bin</a>: {3}</div>
+                <div><a href='{{\"num\":{0},\"base\":8}}'>Oct</a>: {4}</div>
             </body>
-        """ % (
+        """.format(
+            selected,
             format_str("{}".format(selected), 3, ","),
             format_str("{:x}".format(selected), 2),
             format_str("{:b}".format(selected), 4),
             format_str("{:o}".format(selected), 3)
         )
 
-        view.show_popup(html, max_width = 512)
+        view.show_popup(html, max_width = 512, on_navigate = lambda x: view.run_command("convert_number", json.loads(x)))
+
+def convert_number(num, base):
+    if base == 10:
+        return str(num)
+    elif base == 16:
+        return hex(num)
+    elif base == 2:
+        return bin(num)
+    else:
+        return oct(num).replace("o", "")
+
+class ConvertNumberCommand(sublime_plugin.TextCommand):
+    def run(self, edit, num = 0, base = 10):
+        selected = self.view.sel()[0]
+
+        self.view.replace(edit, selected, convert_number(num, base))
