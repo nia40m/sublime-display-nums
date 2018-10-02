@@ -44,21 +44,26 @@ class DisplayNumberListener(sublime_plugin.EventListener):
             return
 
         html = """
+            <style>
+                span {{
+                    font-size: 6px;
+                }}
+            </style>
             <body id=show>
-                <div><a href='{{\"num\":{0},\"base\":10}}'>Dec</a>: {1}</div>
-                <div><a href='{{\"num\":{0},\"base\":16}}'>Hex</a>: {2}</div>
-                <div><a href='{{\"num\":{0},\"base\":2}}'>Bin</a>: {3}</div>
-                <div><a href='{{\"num\":{0},\"base\":8}}'>Oct</a>: {4}</div>
+                <div><a href='{{\"num\":{0},\"base\":16}}'>Hex</a>: {1}</div>
+                <div><a href='{{\"num\":{0},\"base\":10}}'>Dec</a>: {2}</div>
+                <div><a href='{{\"num\":{0},\"base\":8}}'>Oct</a>: {3}</div>
+                <div><a href='{{\"num\":{0},\"base\":2}}'>Bin</a>: {4}</div>
             </body>
         """.format(
             selected,
-            format_str("{}".format(selected), 3, ","),
             format_str("{:x}".format(selected), 2),
-            format_str("{:b}".format(selected), 4),
-            format_str("{:o}".format(selected), 3)
+            format_str("{}".format(selected), 3, ","),
+            format_str("{:o}".format(selected), 3),
+            format_str("{:b}".format(selected), 4)
         )
 
-        view.show_popup(html, max_width = 512, on_navigate = lambda x: view.run_command("convert_number", json.loads(x)))
+        view.show_popup(html, max_width = 1024, on_navigate = lambda x: view.run_command("convert_number", json.loads(x)))
 
 def convert_number(num, base):
     if base == 10:
