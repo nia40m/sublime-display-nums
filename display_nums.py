@@ -46,15 +46,16 @@ class DisplayNumberListener(sublime_plugin.EventListener):
         selected, base = v
 
         positions = ""
-        bit_nums = len("{:b}".format(selected))
+        bit_nums = 32
         i = 0
         while i < bit_nums:
             positions = "{: =5}".format(i) + positions
             i += 4
 
         positions = (" "*4) + positions
+        # rjust дополняет нужными символами до нужной длинны строки
 
-        def foo(s, base, num):
+        def prepare_urls(s, base, num):
             res = ""
             offset = 0
             for c in s[::-1]:
@@ -67,11 +68,6 @@ class DisplayNumberListener(sublime_plugin.EventListener):
             return res
 
         html = """
-            <style>
-                span {{
-                    font-size: 6px;
-                }}
-            </style>
             <body id=show>
                 <div><a href='{{"num":{0},"base":16}}'>Hex</a>: {1}</div>
                 <div><a href='{{"num":{0},"base":10}}'>Dec</a>: {2}</div>
@@ -84,18 +80,18 @@ class DisplayNumberListener(sublime_plugin.EventListener):
             format_str("{:x}".format(selected), 2),
             format_str("{}".format(selected), 3, ","),
             format_str("{:o}".format(selected), 3),
-            foo(format_str("{:b}".format(selected), 4), base, selected),
+            prepare_urls(format_str("{:0=32b}".format(selected), 4), base, selected),
             positions.replace(" ", "&nbsp;")
         )
 
-        def bar(x):
+        def select_function(x):
             data = json.loads(x)
             if data.get("offset") is None:
                 view.run_command("convert_number", data)
             else:
                 view.run_command("change_bit", data)
 
-        view.show_popup(html, max_width = 1024, on_navigate = bar)
+        view.show_popup(html, max_width = 1024, on_navigate = select_function)
 
 def convert_number(num, base):
     if base == 10:
