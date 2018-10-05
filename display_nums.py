@@ -4,6 +4,8 @@ import sublime_plugin
 import re
 import json
 
+plugin_settings = sublime.load_settings("display_nums.sublime-settings")
+
 dec_re = re.compile(r"^([1-9][0-9]*)(u|l|ul|lu|ull|llu)?$", re.I)
 hex_re = re.compile(r"^0x([0-9a-f]+)(u|l|ul|lu|ull|llu)?$", re.I)
 oct_re = re.compile(r"^(0[0-7]*)(u|l|ul|lu|ull|llu)?$", re.I)
@@ -35,6 +37,20 @@ def parse_number(text):
     if match:
         return int(match.group(1), 2), 2
 
+def get_bits(settings):
+    bytes_in_word = settings.get("bytes_in_word", 4)
+
+    if type(bytes_in_word) != int:
+        bytes_in_word = 4
+
+    return bytes_in_word*8
+
+def align_to_octet(num):
+    while num % 4:
+        num += 1
+
+    return num
+
 class DisplayNumberListener(sublime_plugin.EventListener):
     def on_selection_modified_async(self, view):
         selected = view.substr(view.sel()[0]).strip()
@@ -45,8 +61,12 @@ class DisplayNumberListener(sublime_plugin.EventListener):
 
         selected, base = v
 
+        bits_in_word = get_bits(plugin_settings)
+        if bits_in_word < selected.bit_length():
+            bits_in_word = align_to_octet(selected.bit_length())
+
         positions = ""
-        bit_nums = 32
+        bit_nums = bits_in_word
         i = 0
         while i < bit_nums:
             positions = "{: =5}".format(i) + positions
@@ -80,7 +100,7 @@ class DisplayNumberListener(sublime_plugin.EventListener):
             format_str("{:x}".format(selected), 2),
             format_str("{}".format(selected), 3, ","),
             format_str("{:o}".format(selected), 3),
-            prepare_urls(format_str("{:0=32b}".format(selected), 4), base, selected),
+            prepare_urls(format_str("{:0={}b}".format(selected, bits_in_word), 4), base, selected),
             positions.replace(" ", "&nbsp;")
         )
 
