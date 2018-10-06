@@ -2,6 +2,6 @@
 	// number of bytes in a word
 	"bytes_in_word": 4,
 
-    // reverse bit positions (needed for different architectures)
+    // reverse bit positions (needed in different architectures)
     "bit_positions_reversed": false
 }
