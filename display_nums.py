@@ -82,7 +82,6 @@ def get_bits_positions(bits_in_word):
         start += 4
 
     positions = format_str(positions, 2, temp_small_space*3)
-    positions = (" "*5) + positions
     positions = positions.replace(" ", space).replace(temp_small_space, small_space)
 
     return positions
@@ -122,7 +121,7 @@ class DisplayNumberListener(sublime_plugin.EventListener):
                 <div><a href='{{"num":{0},"base":10}}'>Dec</a>: {2}</div>
                 <div><a href='{{"num":{0},"base":8}}'>Oct</a>: {3}</div>
                 <div><a href='{{"num":{0},"base":2}}'>Bin</a>: {4}</div>
-                <div>{5}</div>
+                <div><a href='{{}}'>swap</a> {5}</div>
             </body>
         """.format(
             selected_number,
@@ -139,10 +138,12 @@ class DisplayNumberListener(sublime_plugin.EventListener):
 
         def select_function(x):
             data = json.loads(x)
-            if data.get("offset") is None:
+            if data.get("offset") is not None:
+                view.run_command("change_bit", data)
+            elif data.get("num") is not None:
                 view.run_command("convert_number", data)
             else:
-                view.run_command("change_bit", data)
+                view.run_command("swap_positions")
 
         view.show_popup(html, max_width = 1024, location = view.sel()[0].a, on_navigate = select_function)
 
@@ -158,12 +159,19 @@ def convert_number(num, base):
 
 class ConvertNumberCommand(sublime_plugin.TextCommand):
     def run(self, edit, num = 0, base = 10):
-        selected_number = self.view.sel()[0]
+        selected_range = self.view.sel()[0]
 
-        self.view.replace(edit, selected_number, convert_number(num, base))
+        self.view.replace(edit, selected_range, convert_number(num, base))
 
 class ChangeBitCommand(sublime_plugin.TextCommand):
     def run(self, edit, num, base, offset):
-        selected_number = self.view.sel()[0]
+        selected_range = self.view.sel()[0]
 
-        self.view.replace(edit, selected_number, convert_number(num ^ (1 << offset), base))
+        self.view.replace(edit, selected_range, convert_number(num ^ (1 << offset), base))
+
+class SwapPositionsCommand(sublime_plugin.TextCommand):
+    def run(self, edit):
+        plugin_settings.set("bit_positions_reversed", not is_positions_reversed(plugin_settings))
+
+        selected_range = self.view.sel()[0]
+        self.view.replace(edit, selected_range, self.view.substr(selected_range).strip())
