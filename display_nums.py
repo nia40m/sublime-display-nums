@@ -6,10 +6,14 @@ import json
 
 plugin_settings = sublime.load_settings("display_nums.sublime-settings")
 
-dec_re = re.compile(r"^([1-9][0-9]*)(u|l|ul|lu|ull|llu)?$", re.I)
+dec_re = re.compile(r"^(0|([1-9][0-9]*))(u|l|ul|lu|ull|llu)?$", re.I)
 hex_re = re.compile(r"^0x([0-9a-f]+)(u|l|ul|lu|ull|llu)?$", re.I)
-oct_re = re.compile(r"^(0[0-7]*)(u|l|ul|lu|ull|llu)?$", re.I)
+oct_re = re.compile(r"^(0[0-7]+)(u|l|ul|lu|ull|llu)?$", re.I)
 bin_re = re.compile(r"^0b([01]+)(u|l|ul|lu|ull|llu)?$", re.I)
+
+space = "&nbsp;"
+temp_small_space = "*"
+small_space = "<span>"+space+"</span>"
 
 def format_str(string, num, separator=" "):
     res = string[-num:]
@@ -37,13 +41,26 @@ def parse_number(text):
     if match:
         return int(match.group(1), 2), 2
 
-def get_bits(settings):
+def get_bits(settings, number_bit_len):
     bytes_in_word = settings.get("bytes_in_word", 4)
 
     if type(bytes_in_word) != int:
         bytes_in_word = 4
 
-    return bytes_in_word*8
+    bytes_in_word *= 8
+
+    if bytes_in_word < number_bit_len:
+        return number_bit_len
+
+    return bytes_in_word
+
+def is_positions_reversed(settings):
+    position_reversed = settings.get("bit_positions_reversed", False)
+
+    if type(position_reversed) != bool:
+        position_reversed = False
+
+    return position_reversed
 
 def align_to_octet(num):
     while num % 4:
@@ -51,36 +68,38 @@ def align_to_octet(num):
 
     return num
 
+def get_bits_positions(bits_in_word):
+    positions = ""
+    start = 0
+    reversed_bits = is_positions_reversed(plugin_settings)
+
+    while start < bits_in_word:
+        if reversed_bits:
+            positions += "{: <4}".format(start)
+        else:
+            positions = "{: >4}".format(start) + positions
+
+        start += 4
+
+    positions = format_str(positions, 2, temp_small_space*3)
+    positions = (" "*5) + positions
+    positions = positions.replace(" ", space).replace(temp_small_space, small_space)
+
+    return positions
+
 class DisplayNumberListener(sublime_plugin.EventListener):
     def on_selection_modified_async(self, view):
-        selected = view.substr(view.sel()[0]).strip()
+        selected_number = view.substr(view.sel()[0]).strip()
 
-        v = parse_number(selected)
+        v = parse_number(selected_number)
         if v is None:
             return
 
-        space = "&nbsp;"
-        temp_small_space = "*"
-        small_space = "<span>"+space+"</span>"
+        selected_number, base = v
 
-        selected, base = v
+        bits_in_word = get_bits(plugin_settings, align_to_octet(selected_number.bit_length()))
 
-        bits_in_word = get_bits(plugin_settings)
-        if bits_in_word < selected.bit_length():
-            bits_in_word = align_to_octet(selected.bit_length())
-
-        positions = ""
-        i = 0
-        while i < bits_in_word:
-            positions = "{: =4}".format(i) + positions
-            i += 4
-
-        positions = format_str(positions, 2, temp_small_space*3)
-
-        positions = (" "*5) + positions
-        # rjust дополняет нужными символами до нужной длинны строки
-
-        positions = positions.replace(" ", space).replace(temp_small_space, small_space)
+        positions = get_bits_positions(bits_in_word)
 
         def prepare_urls(s, base, num):
             res = ""
@@ -106,14 +125,14 @@ class DisplayNumberListener(sublime_plugin.EventListener):
                 <div>{5}</div>
             </body>
         """.format(
-            selected,
-            format_str("{:x}".format(selected), 2),
-            format_str("{}".format(selected), 3, ","),
-            format_str("{:o}".format(selected), 3),
+            selected_number,
+            format_str("{:x}".format(selected_number), 2),
+            format_str("{}".format(selected_number), 3, ","),
+            format_str("{:o}".format(selected_number), 3),
             prepare_urls(
-                format_str(format_str("{:0={}b}".format(selected, bits_in_word), 4, temp_small_space), 1, temp_small_space),
+                format_str(format_str("{:0={}b}".format(selected_number, bits_in_word), 4, temp_small_space), 1, temp_small_space),
                 base,
-                selected
+                selected_number
             ).replace(temp_small_space, small_space),
             positions
         )
@@ -139,12 +158,12 @@ def convert_number(num, base):
 
 class ConvertNumberCommand(sublime_plugin.TextCommand):
     def run(self, edit, num = 0, base = 10):
-        selected = self.view.sel()[0]
+        selected_number = self.view.sel()[0]
 
-        self.view.replace(edit, selected, convert_number(num, base))
+        self.view.replace(edit, selected_number, convert_number(num, base))
 
 class ChangeBitCommand(sublime_plugin.TextCommand):
     def run(self, edit, num, base, offset):
-        selected = self.view.sel()[0]
+        selected_number = self.view.sel()[0]
 
-        self.view.replace(edit, selected, convert_number(num ^ (1 << offset), base))
+        self.view.replace(edit, selected_number, convert_number(num ^ (1 << offset), base))
