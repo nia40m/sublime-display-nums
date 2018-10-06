@@ -105,7 +105,7 @@ class DisplayNumberListener(sublime_plugin.EventListener):
             offset = 0
             for c in s[::-1]:
                 if c.isdigit():
-                    res = """<a href='{{"num":{},"base":{}, "offset":{}}}'>{}</a>""".format(num, base, offset, c) + res
+                    res = """<a id='bits' href='{{"num":{},"base":{}, "offset":{}}}'>{}</a>""".format(num, base, offset, c) + res
                     offset += 1
                 else:
                     res = c + res
@@ -115,13 +115,15 @@ class DisplayNumberListener(sublime_plugin.EventListener):
         html = """
             <body id=show>
                 <style>
-                    span {{ font-size: 0.35rem; }}
+                    span  {{ font-size: 0.35rem; }}
+                    #swap {{ color: var(--yellowish); }}
+                    #bits {{ color: var(--foreground); }}
                 </style>
                 <div><a href='{{"num":{0},"base":16}}'>Hex</a>: {1}</div>
                 <div><a href='{{"num":{0},"base":10}}'>Dec</a>: {2}</div>
                 <div><a href='{{"num":{0},"base":8}}'>Oct</a>: {3}</div>
                 <div><a href='{{"num":{0},"base":2}}'>Bin</a>: {4}</div>
-                <div><a href='{{}}'>swap</a> {5}</div>
+                <div><a id='swap' href='{{}}'>swap</a> {5}</div>
             </body>
         """.format(
             selected_number,
