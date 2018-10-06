@@ -59,6 +59,10 @@ class DisplayNumberListener(sublime_plugin.EventListener):
         if v is None:
             return
 
+        space = "&nbsp;"
+        temp_small_space = "*"
+        small_space = "<span>"+space+"</span>"
+
         selected, base = v
 
         bits_in_word = get_bits(plugin_settings)
@@ -66,20 +70,23 @@ class DisplayNumberListener(sublime_plugin.EventListener):
             bits_in_word = align_to_octet(selected.bit_length())
 
         positions = ""
-        bit_nums = bits_in_word
         i = 0
-        while i < bit_nums:
-            positions = "{: =5}".format(i) + positions
+        while i < bits_in_word:
+            positions = "{: =4}".format(i) + positions
             i += 4
 
-        positions = (" "*4) + positions
+        positions = format_str(positions, 2, temp_small_space*3)
+
+        positions = (" "*5) + positions
         # rjust дополняет нужными символами до нужной длинны строки
+
+        positions = positions.replace(" ", space).replace(temp_small_space, small_space)
 
         def prepare_urls(s, base, num):
             res = ""
             offset = 0
             for c in s[::-1]:
-                if c != " ":
+                if c.isdigit():
                     res = """<a href='{{"num":{},"base":{}, "offset":{}}}'>{}</a>""".format(num, base, offset, c) + res
                     offset += 1
                 else:
@@ -89,6 +96,9 @@ class DisplayNumberListener(sublime_plugin.EventListener):
 
         html = """
             <body id=show>
+                <style>
+                    span {{ font-size: 0.35rem; }}
+                </style>
                 <div><a href='{{"num":{0},"base":16}}'>Hex</a>: {1}</div>
                 <div><a href='{{"num":{0},"base":10}}'>Dec</a>: {2}</div>
                 <div><a href='{{"num":{0},"base":8}}'>Oct</a>: {3}</div>
@@ -100,8 +110,12 @@ class DisplayNumberListener(sublime_plugin.EventListener):
             format_str("{:x}".format(selected), 2),
             format_str("{}".format(selected), 3, ","),
             format_str("{:o}".format(selected), 3),
-            prepare_urls(format_str("{:0={}b}".format(selected, bits_in_word), 4), base, selected),
-            positions.replace(" ", "&nbsp;")
+            prepare_urls(
+                format_str(format_str("{:0={}b}".format(selected, bits_in_word), 4, temp_small_space), 1, temp_small_space),
+                base,
+                selected
+            ).replace(temp_small_space, small_space),
+            positions
         )
 
         def select_function(x):
@@ -111,7 +125,7 @@ class DisplayNumberListener(sublime_plugin.EventListener):
             else:
                 view.run_command("change_bit", data)
 
-        view.show_popup(html, max_width = 1024, on_navigate = select_function)
+        view.show_popup(html, max_width = 1024, location = view.sel()[0].a, on_navigate = select_function)
 
 def convert_number(num, base):
     if base == 10:
