@@ -86,6 +86,22 @@ def get_bits_positions(bits_in_word):
 
     return positions
 
+def prepare_urls(s, base, num):
+    res = ""
+    offset = 0
+    for c in s[::-1]:
+        if c.isdigit():
+            res = """<a id='bits' href='{{
+                    "num":{},
+                    "base":{},
+                    "offset":{}
+                }}'>{}</a>""".format(num, base, offset, c) + res
+            offset += 1
+        else:
+            res = c + res
+
+    return res
+
 class DisplayNumberListener(sublime_plugin.EventListener):
     def on_selection_modified_async(self, view):
         selected_number = view.substr(view.sel()[0]).strip()
@@ -99,18 +115,6 @@ class DisplayNumberListener(sublime_plugin.EventListener):
         bits_in_word = get_bits(plugin_settings, align_to_octet(selected_number.bit_length()))
 
         positions = get_bits_positions(bits_in_word)
-
-        def prepare_urls(s, base, num):
-            res = ""
-            offset = 0
-            for c in s[::-1]:
-                if c.isdigit():
-                    res = """<a id='bits' href='{{"num":{},"base":{}, "offset":{}}}'>{}</a>""".format(num, base, offset, c) + res
-                    offset += 1
-                else:
-                    res = c + res
-
-            return res
 
         html = """
             <body id=show>
@@ -131,7 +135,13 @@ class DisplayNumberListener(sublime_plugin.EventListener):
             format_str("{}".format(selected_number), 3, ","),
             format_str("{:o}".format(selected_number), 3),
             prepare_urls(
-                format_str(format_str("{:0={}b}".format(selected_number, bits_in_word), 4, temp_small_space), 1, temp_small_space),
+                format_str(
+                    format_str(
+                        "{:0={}b}".format(selected_number, bits_in_word),
+                        4,
+                        temp_small_space),
+                    1,
+                    temp_small_space),
                 base,
                 selected_number
             ).replace(temp_small_space, small_space),
@@ -147,7 +157,12 @@ class DisplayNumberListener(sublime_plugin.EventListener):
             else:
                 view.run_command("swap_positions")
 
-        view.show_popup(html, max_width = 1024, location = view.sel()[0].a, on_navigate = select_function)
+        view.show_popup(
+            html,
+            max_width = 1024,
+            location = view.sel()[0].a,
+            on_navigate = select_function
+        )
 
 def convert_number(num, base):
     if base == 10:
