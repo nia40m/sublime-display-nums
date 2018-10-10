@@ -4,7 +4,7 @@ import sublime_plugin
 import re
 import json
 
-plugin_settings = sublime.load_settings("display_nums.sublime-settings")
+plugin_settings = None
 
 dec_re = re.compile(r"^(0|([1-9][0-9]*))(u|l|ul|lu|ull|llu)?$", re.I)
 hex_re = re.compile(r"^0x([0-9a-f]+)(u|l|ul|lu|ull|llu)?$", re.I)
@@ -14,6 +14,10 @@ bin_re = re.compile(r"^0b([01]+)(u|l|ul|lu|ull|llu)?$", re.I)
 space = "&nbsp;"
 temp_small_space = "*"
 small_space = "<span>"+space+"</span>"
+
+def plugin_loaded():
+    global plugin_settings
+    plugin_settings = sublime.load_settings("display_nums.sublime-settings")
 
 def format_str(string, num, separator=" "):
     res = string[-num:]
