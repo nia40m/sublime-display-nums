@@ -17,7 +17,33 @@ small_space = "<span>"+space+"</span>"
 
 def plugin_loaded():
     global plugin_settings
-    plugin_settings = sublime.load_settings("display_nums.sublime-settings")
+    plugin_settings = Settings("display_nums.sublime-settings")
+
+class Settings:
+    def __init__(self, name):
+        self.settings = sublime.load_settings(name)
+
+    def __getattribute__(self, name):
+        try:
+            return object.__getattribute__(self, name)
+        except AttributeError:
+            return object.__getattribute__(self.settings, name)
+
+    def get_bits(self):
+        bytes_in_word = self.settings.get("bytes_in_word", 4)
+
+        if not isinstance(bytes_in_word, int):
+            return 4 * 8
+
+        return bytes_in_word * 8
+
+    def is_positions_reversed(self):
+        position_reversed = self.settings.get("bit_positions_reversed", False)
+
+        if not isinstance(position_reversed, bool):
+            return False
+
+        return position_reversed
 
 def format_str(string, num, separator=" "):
     res = string[-num:]
@@ -45,27 +71,6 @@ def parse_number(text):
     if match:
         return int(match.group(1), 2), 2
 
-def get_bits(settings, number_bit_len):
-    bytes_in_word = settings.get("bytes_in_word", 4)
-
-    if type(bytes_in_word) != int:
-        bytes_in_word = 4
-
-    bytes_in_word *= 8
-
-    if bytes_in_word < number_bit_len:
-        return number_bit_len
-
-    return bytes_in_word
-
-def is_positions_reversed(settings):
-    position_reversed = settings.get("bit_positions_reversed", False)
-
-    if type(position_reversed) != bool:
-        position_reversed = False
-
-    return position_reversed
-
 def align_to_octet(num):
     while num % 4:
         num += 1
@@ -75,7 +80,7 @@ def align_to_octet(num):
 def get_bits_positions(bits_in_word):
     positions = ""
     start = 0
-    reversed_bits = is_positions_reversed(plugin_settings)
+    reversed_bits = plugin_settings.is_positions_reversed()
 
     while start < bits_in_word:
         if reversed_bits:
@@ -116,7 +121,7 @@ class DisplayNumberListener(sublime_plugin.EventListener):
 
         selected_number, base = v
 
-        bits_in_word = get_bits(plugin_settings, align_to_octet(selected_number.bit_length()))
+        bits_in_word = max(plugin_settings.get_bits(), align_to_octet(selected_number.bit_length()))
 
         positions = get_bits_positions(bits_in_word)
 
@@ -181,18 +186,16 @@ def convert_number(num, base):
 class ConvertNumberCommand(sublime_plugin.TextCommand):
     def run(self, edit, num = 0, base = 10):
         selected_range = self.view.sel()[0]
-
         self.view.replace(edit, selected_range, convert_number(num, base))
 
 class ChangeBitCommand(sublime_plugin.TextCommand):
     def run(self, edit, num, base, offset):
         selected_range = self.view.sel()[0]
-
         self.view.replace(edit, selected_range, convert_number(num ^ (1 << offset), base))
 
 class SwapPositionsCommand(sublime_plugin.TextCommand):
     def run(self, edit):
-        plugin_settings.set("bit_positions_reversed", not is_positions_reversed(plugin_settings))
+        plugin_settings.set("bit_positions_reversed", not plugin_settings.is_positions_reversed())
 
         selected_range = self.view.sel()[0]
         self.view.replace(edit, selected_range, self.view.substr(selected_range).strip())
