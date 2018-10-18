@@ -29,7 +29,7 @@ class Settings:
         except AttributeError:
             return object.__getattribute__(self.settings, name)
 
-    def get_bits(self):
+    def bit_length(self):
         bytes_in_word = self.settings.get("bytes_in_word", 4)
 
         if not isinstance(bytes_in_word, int):
@@ -53,29 +53,6 @@ def format_str(string, num, separator=" "):
         string = string[:-num]
 
     return res
-
-def parse_number(text):
-    match = dec_re.match(text)
-    if match:
-        return int(match.group(1), 10), 10
-
-    match = hex_re.match(text)
-    if match:
-        return int(match.group(1), 16), 16
-
-    match = oct_re.match(text)
-    if match:
-        return int(match.group(1), 8), 8
-
-    match = bin_re.match(text)
-    if match:
-        return int(match.group(1), 2), 2
-
-def align_to_octet(num):
-    while num % 4:
-        num += 1
-
-    return num
 
 def get_bits_positions(bits_in_word):
     positions = ""
@@ -111,6 +88,23 @@ def prepare_urls(s, base, num):
 
     return res
 
+def parse_number(text):
+    match = dec_re.match(text)
+    if match:
+        return int(match.group(1), 10), 10
+
+    match = hex_re.match(text)
+    if match:
+        return int(match.group(1), 16), 16
+
+    match = oct_re.match(text)
+    if match:
+        return int(match.group(1), 8), 8
+
+    match = bin_re.match(text)
+    if match:
+        return int(match.group(1), 2), 2
+
 class DisplayNumberListener(sublime_plugin.EventListener):
     def on_selection_modified_async(self, view):
         selected_number = view.substr(view.sel()[0]).strip()
@@ -119,9 +113,10 @@ class DisplayNumberListener(sublime_plugin.EventListener):
         if v is None:
             return
 
-        selected_number, base = v
+        number, base = v
 
-        bits_in_word = max(plugin_settings.get_bits(), align_to_octet(selected_number.bit_length()))
+        # select max between (bit_length in settings) and (bit_length of selected number aligned to 4)
+        bits_in_word = max(plugin_settings.bit_length(), number.bit_length() + ((-number.bit_length())&0x3))
 
         positions = get_bits_positions(bits_in_word)
 
@@ -139,20 +134,20 @@ class DisplayNumberListener(sublime_plugin.EventListener):
                 <div><a id='swap' href='{{}}'>swap</a> {5}</div>
             </body>
         """.format(
-            selected_number,
-            format_str("{:x}".format(selected_number), 2),
-            format_str("{}".format(selected_number), 3, ","),
-            format_str("{:o}".format(selected_number), 3),
+            number,
+            format_str("{:x}".format(number), 2),
+            format_str("{}".format(number), 3, ","),
+            format_str("{:o}".format(number), 3),
             prepare_urls(
                 format_str(
                     format_str(
-                        "{:0={}b}".format(selected_number, bits_in_word),
+                        "{:0={}b}".format(number, bits_in_word),
                         4,
                         temp_small_space),
                     1,
                     temp_small_space),
                 base,
-                selected_number
+                number
             ).replace(temp_small_space, small_space),
             positions
         )
