@@ -7,4 +7,5 @@ This plugin converts the selected number in decimal, hexadecimal, binary or octa
 Aditional functionality:
 * by clicking on any of the numeral systems in the popup window it converts the number;
 * pressing any digit of binary number makes it opposit of it's current value;
-* the "swap" button swaps the bit positions what can be usefull in some architectures.
+* "swap" button swaps the bit positions what can be usefull in some architectures;
+* key binding is available for number conversion.
