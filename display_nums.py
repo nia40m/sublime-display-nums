@@ -170,13 +170,13 @@ class DisplayNumberListener(sublime_plugin.EventListener):
 
 def convert_number(num, base):
     if base == 10:
-        return str(num)
+        return "{:d}".format(num)
     elif base == 16:
-        return hex(num)
+        return "0x{:x}".format(num)
     elif base == 2:
-        return bin(num)
+        return "0b{:b}".format(num)
     else:
-        return oct(num).replace("o", "")
+        return "0{:o}".format(num)
 
 class ConvertNumberCommand(sublime_plugin.TextCommand):
     def run(self, edit, base, num = None):
