@@ -1,0 +1,13 @@
+[
+	// convert selected number to hexadecimal numeral system
+	{ "keys":[""], "command": "convert_number", "args":{ "base":16 } },
+
+	// convert selected number to decimal numeral system
+	{ "keys":[""], "command": "convert_number", "args":{ "base":10 } },
+
+	// convert selected number to octal numeral system
+	{ "keys":[""], "command": "convert_number", "args":{ "base":8 } },
+
+	// convert selected number to binary numeral system
+	{ "keys":[""], "command": "convert_number", "args":{ "base":2 } }
+]

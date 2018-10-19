@@ -22,6 +22,14 @@
                                     "base_file": "${packages}/sublime-display-nums/display_nums.sublime-settings",
                                     "default": "{\n\t$0\n}\n"
                                 }
+                            },
+                            {
+                                "caption": "Key bindings",
+                                "command": "edit_settings",
+                                "args": {
+                                    "base_file": "${packages}/sublime-display-nums/Default.sublime-keymap",
+                                    "default": "[\n\t$0\n]\n"
+                                }
                             }
                         ]
                     }

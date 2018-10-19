@@ -116,7 +116,7 @@ class DisplayNumberListener(sublime_plugin.EventListener):
         number, base = v
 
         # select max between (bit_length in settings) and (bit_length of selected number aligned to 4)
-        bits_in_word = max(plugin_settings.bit_length(), number.bit_length() + ((-number.bit_length())&0x3))
+        bits_in_word = max(plugin_settings.bit_length(), number.bit_length() + ((-number.bit_length()) & 0x3))
 
         positions = get_bits_positions(bits_in_word)
 
@@ -127,10 +127,10 @@ class DisplayNumberListener(sublime_plugin.EventListener):
                     #swap {{ color: var(--yellowish); }}
                     #bits {{ color: var(--foreground); }}
                 </style>
-                <div><a href='{{"num":{0},"base":16}}'>Hex</a>: {1}</div>
-                <div><a href='{{"num":{0},"base":10}}'>Dec</a>: {2}</div>
-                <div><a href='{{"num":{0},"base":8}}'>Oct</a>: {3}</div>
-                <div><a href='{{"num":{0},"base":2}}'>Bin</a>: {4}</div>
+                <div><a href='{{"base":16, "num":{0}}}'>Hex</a>: {1}</div>
+                <div><a href='{{"base":10, "num":{0}}}'>Dec</a>: {2}</div>
+                <div><a href='{{"base":8, "num":{0}}}'>Oct</a>: {3}</div>
+                <div><a href='{{"base":2, "num":{0}}}'>Bin</a>: {4}</div>
                 <div><a id='swap' href='{{}}'>swap</a> {5}</div>
             </body>
         """.format(
@@ -179,8 +179,21 @@ def convert_number(num, base):
         return oct(num).replace("o", "")
 
 class ConvertNumberCommand(sublime_plugin.TextCommand):
-    def run(self, edit, num = 0, base = 10):
+    def run(self, edit, base, num = None):
         selected_range = self.view.sel()[0]
+
+        if num is not None:
+            self.view.replace(edit, selected_range, convert_number(num, base))
+            return
+
+        selected_number = self.view.substr(selected_range).strip()
+
+        v = parse_number(selected_number)
+        if v is None:
+            return
+
+        num, _ = v
+
         self.view.replace(edit, selected_range, convert_number(num, base))
 
 class ChangeBitCommand(sublime_plugin.TextCommand):
