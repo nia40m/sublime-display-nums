@@ -19,6 +19,7 @@ def plugin_loaded():
     global plugin_settings
     plugin_settings = Settings("display_nums.sublime-settings")
 
+# event on settings "add on change"
 class Settings:
     def __init__(self, name):
         self.settings = sublime.load_settings(name)
@@ -29,8 +30,14 @@ class Settings:
         except AttributeError:
             return object.__getattribute__(self.settings, name)
 
+    def set_view_settings(self, settings):
+        self.view_settings = settings
+
     def bit_length(self):
-        bytes_in_word = self.settings.get("bytes_in_word", 4)
+        if self.view_settings.has("disnum.bytes_in_word"):
+            bytes_in_word = self.view_settings.get("disnum.bytes_in_word")
+        else:
+            bytes_in_word = self.settings.get("bytes_in_word", 4)
 
         if not isinstance(bytes_in_word, int):
             return 4 * 8
@@ -38,7 +45,10 @@ class Settings:
         return bytes_in_word * 8
 
     def is_positions_reversed(self):
-        position_reversed = self.settings.get("bit_positions_reversed", False)
+        if self.view_settings.has("disnum.bit_positions_reversed"):
+            position_reversed = self.view_settings.get("disnum.bit_positions_reversed")
+        else:
+           position_reversed = self.settings.get("bit_positions_reversed", False)
 
         if not isinstance(position_reversed, bool):
             return False
@@ -108,7 +118,7 @@ def parse_number(text):
 class DisplayNumberListener(sublime_plugin.EventListener):
     def on_selection_modified_async(self, view):
         selected_number = view.substr(view.sel()[0]).strip()
-
+        # if more then one select close popup
         v = parse_number(selected_number)
         if v is None:
             return
@@ -167,6 +177,9 @@ class DisplayNumberListener(sublime_plugin.EventListener):
             location = view.sel()[0].a,
             on_navigate = select_function
         )
+
+    def on_activated_async(self, view):
+        plugin_settings.set_view_settings(view.settings())
 
 def convert_number(num, base):
     if base == 10:
