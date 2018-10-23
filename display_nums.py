@@ -5,6 +5,8 @@ import re
 import json
 
 plugin_settings = None
+bits_in_word = None
+position_reversed = None
 
 dec_re = re.compile(r"^(0|([1-9][0-9]*))(u|l|ul|lu|ull|llu)?$", re.I)
 hex_re = re.compile(r"^0x([0-9a-f]+)(u|l|ul|lu|ull|llu)?$", re.I)
@@ -19,6 +21,37 @@ def plugin_loaded():
     global plugin_settings
     plugin_settings = sublime.load_settings("display_nums.sublime-settings")
 
+    plugin_settings.add_on_change("bytes_in_word", get_bits_in_word)
+    plugin_settings.add_on_change("bit_positions_reversed", get_positions_reversed)
+
+def get_bits_in_word():
+    global plugin_settings
+    global bits_in_word
+    project_settings = sublime.active_window().active_view().settings()
+
+    if project_settings.has("disnum.bytes_in_word"):
+        bytes_in_word = project_settings.get("disnum.bytes_in_word")
+    else:
+        bytes_in_word = plugin_settings.get("bytes_in_word")
+
+    if not isinstance(bytes_in_word, int):
+        bits_in_word = 4 * 8
+
+    bits_in_word = bytes_in_word * 8
+
+def get_positions_reversed():
+    global plugin_settings
+    global position_reversed
+    project_settings = sublime.active_window().active_view().settings()
+
+    if project_settings.has("disnum.bit_positions_reversed"):
+        position_reversed = project_settings.get("disnum.bit_positions_reversed")
+    else:
+        position_reversed = plugin_settings.get("bit_positions_reversed")
+
+    if not isinstance(position_reversed, bool):
+        position_reversed = False
+
 def format_str(string, num, separator=" "):
     res = string[-num:]
     string = string[:-num]
@@ -28,57 +61,13 @@ def format_str(string, num, separator=" "):
 
     return res
 
-def parse_number(text):
-    match = dec_re.match(text)
-    if match:
-        return int(match.group(1), 10), 10
-
-    match = hex_re.match(text)
-    if match:
-        return int(match.group(1), 16), 16
-
-    match = oct_re.match(text)
-    if match:
-        return int(match.group(1), 8), 8
-
-    match = bin_re.match(text)
-    if match:
-        return int(match.group(1), 2), 2
-
-def get_bits(settings, number_bit_len):
-    bytes_in_word = settings.get("bytes_in_word", 4)
-
-    if type(bytes_in_word) != int:
-        bytes_in_word = 4
-
-    bytes_in_word *= 8
-
-    if bytes_in_word < number_bit_len:
-        return number_bit_len
-
-    return bytes_in_word
-
-def is_positions_reversed(settings):
-    position_reversed = settings.get("bit_positions_reversed", False)
-
-    if type(position_reversed) != bool:
-        position_reversed = False
-
-    return position_reversed
-
-def align_to_octet(num):
-    while num % 4:
-        num += 1
-
-    return num
-
-def get_bits_positions(bits_in_word):
+def get_bits_positions(curr_bits_in_word):
+    global position_reversed
     positions = ""
     start = 0
-    reversed_bits = is_positions_reversed(plugin_settings)
 
-    while start < bits_in_word:
-        if reversed_bits:
+    while start < curr_bits_in_word:
+        if position_reversed:
             positions += "{: <4}".format(start)
         else:
             positions = "{: >4}".format(start) + positions
@@ -106,19 +95,39 @@ def prepare_urls(s, base, num):
 
     return res
 
+def parse_number(text):
+    match = dec_re.match(text)
+    if match:
+        return int(match.group(1), 10), 10
+
+    match = hex_re.match(text)
+    if match:
+        return int(match.group(1), 16), 16
+
+    match = oct_re.match(text)
+    if match:
+        return int(match.group(1), 8), 8
+
+    match = bin_re.match(text)
+    if match:
+        return int(match.group(1), 2), 2
+
 class DisplayNumberListener(sublime_plugin.EventListener):
     def on_selection_modified_async(self, view):
-        selected_number = view.substr(view.sel()[0]).strip()
+        # if more then one select close popup
+        if len(view.sel()) > 1:
+            return
 
-        v = parse_number(selected_number)
+        v = parse_number(view.substr(view.sel()[0]).strip())
         if v is None:
             return
 
-        selected_number, base = v
+        number, base = v
 
-        bits_in_word = get_bits(plugin_settings, align_to_octet(selected_number.bit_length()))
+        global bits_in_word
 
-        positions = get_bits_positions(bits_in_word)
+        # select max between (bit_length in settings) and (bit_length of selected number aligned to 4)
+        curr_bits_in_word = max(bits_in_word, number.bit_length() + ((-number.bit_length()) & 0x3))
 
         html = """
             <body id=show>
@@ -127,29 +136,29 @@ class DisplayNumberListener(sublime_plugin.EventListener):
                     #swap {{ color: var(--yellowish); }}
                     #bits {{ color: var(--foreground); }}
                 </style>
-                <div><a href='{{"num":{0},"base":16}}'>Hex</a>: {1}</div>
-                <div><a href='{{"num":{0},"base":10}}'>Dec</a>: {2}</div>
-                <div><a href='{{"num":{0},"base":8}}'>Oct</a>: {3}</div>
-                <div><a href='{{"num":{0},"base":2}}'>Bin</a>: {4}</div>
-                <div><a id='swap' href='{{}}'>swap</a> {5}</div>
+                <div><a href='{{"base":16, "num":{0}}}'>Hex</a>: {1}</div>
+                <div><a href='{{"base":10, "num":{0}}}'>Dec</a>: {2}</div>
+                <div><a href='{{"base":8, "num":{0}}}'>Oct</a>: {3}</div>
+                <div><a href='{{"base":2, "num":{0}}}'>Bin</a>: {4}</div>
+                <div id='swap'><a id='swap' href='{{}}'>swap</a> {5}</div>
             </body>
         """.format(
-            selected_number,
-            format_str("{:x}".format(selected_number), 2),
-            format_str("{}".format(selected_number), 3, ","),
-            format_str("{:o}".format(selected_number), 3),
+            number,
+            format_str("{:x}".format(number), 2),
+            format_str("{}".format(number), 3, ","),
+            format_str("{:o}".format(number), 3),
             prepare_urls(
                 format_str(
                     format_str(
-                        "{:0={}b}".format(selected_number, bits_in_word),
+                        "{:0={}b}".format(number, curr_bits_in_word),
                         4,
                         temp_small_space),
                     1,
                     temp_small_space),
                 base,
-                selected_number
+                number
             ).replace(temp_small_space, small_space),
-            positions
+            get_bits_positions(curr_bits_in_word)
         )
 
         def select_function(x):
@@ -168,31 +177,49 @@ class DisplayNumberListener(sublime_plugin.EventListener):
             on_navigate = select_function
         )
 
+    def on_activated_async(self, view):
+        view.settings().clear_on_change("disnum.bytes_in_word")
+        view.settings().add_on_change("disnum.bytes_in_word", get_bits_in_word)
+
+        get_bits_in_word()
+
 def convert_number(num, base):
     if base == 10:
-        return str(num)
+        return "{:d}".format(num)
     elif base == 16:
-        return hex(num)
+        return "0x{:x}".format(num)
     elif base == 2:
-        return bin(num)
+        return "0b{:b}".format(num)
     else:
-        return oct(num).replace("o", "")
+        return "0{:o}".format(num)
 
 class ConvertNumberCommand(sublime_plugin.TextCommand):
-    def run(self, edit, num = 0, base = 10):
+    def run(self, edit, base, num = None):
         selected_range = self.view.sel()[0]
+
+        if num is not None:
+            self.view.replace(edit, selected_range, convert_number(num, base))
+            return
+
+        selected_number = self.view.substr(selected_range).strip()
+
+        v = parse_number(selected_number)
+        if v is None:
+            return
+
+        num, _ = v
 
         self.view.replace(edit, selected_range, convert_number(num, base))
 
 class ChangeBitCommand(sublime_plugin.TextCommand):
     def run(self, edit, num, base, offset):
         selected_range = self.view.sel()[0]
-
         self.view.replace(edit, selected_range, convert_number(num ^ (1 << offset), base))
 
 class SwapPositionsCommand(sublime_plugin.TextCommand):
     def run(self, edit):
-        plugin_settings.set("bit_positions_reversed", not is_positions_reversed(plugin_settings))
+        global position_reversed
+        position_reversed = not position_reversed
 
         selected_range = self.view.sel()[0]
         self.view.replace(edit, selected_range, self.view.substr(selected_range).strip())
