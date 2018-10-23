@@ -117,9 +117,11 @@ def parse_number(text):
 
 class DisplayNumberListener(sublime_plugin.EventListener):
     def on_selection_modified_async(self, view):
-        selected_number = view.substr(view.sel()[0]).strip()
         # if more then one select close popup
-        v = parse_number(selected_number)
+        if len(view.sel()) > 1:
+            return
+
+        v = parse_number(view.substr(view.sel()[0]).strip())
         if v is None:
             return
 
