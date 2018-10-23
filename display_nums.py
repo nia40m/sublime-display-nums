@@ -5,8 +5,8 @@ import re
 import json
 
 plugin_settings = None
-bits_in_word
-position_reversed
+bits_in_word = None
+position_reversed = None
 
 dec_re = re.compile(r"^(0|([1-9][0-9]*))(u|l|ul|lu|ull|llu)?$", re.I)
 hex_re = re.compile(r"^0x([0-9a-f]+)(u|l|ul|lu|ull|llu)?$", re.I)
