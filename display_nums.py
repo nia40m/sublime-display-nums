@@ -82,13 +82,17 @@ def get_bits_positions(curr_bits_in_word):
 def prepare_urls(s, base, num):
     res = ""
     offset = 0
+
+    bit = """<a id='bits' href='{{ "func":"{func}",
+        "data":{{ "num":{num}, "base":{base}, "offset":{offset} }}
+        }}'>{char}</a>"""
+
     for c in s[::-1]:
         if c.isdigit():
-            res = """<a id='bits' href='{{
-                    "num":{},
-                    "base":{},
-                    "offset":{}
-                }}'>{}</a>""".format(num, base, offset, c) + res
+            res = bit.format(
+                func = "change_bit", num = num, base = base, offset = offset, char = c
+                ) + res
+
             offset += 1
         else:
             res = c + res
@@ -98,56 +102,55 @@ def prepare_urls(s, base, num):
 def parse_number(text):
     match = dec_re.match(text)
     if match:
-        return int(match.group(1), 10), 10
+        return {"number": int(match.group(1), 10), "base": 10}
 
     match = hex_re.match(text)
     if match:
-        return int(match.group(1), 16), 16
+        return {"number": int(match.group(1), 16), "base": 16}
 
     match = oct_re.match(text)
     if match:
-        return int(match.group(1), 8), 8
+        return {"number": int(match.group(1), 8), "base": 8}
 
     match = bin_re.match(text)
     if match:
-        return int(match.group(1), 2), 2
+        return {"number": int(match.group(1), 2), "base": 2}
 
-class DisplayNumberListener(sublime_plugin.EventListener):
-    def on_selection_modified_async(self, view):
-        # if more then one select close popup
-        if len(view.sel()) > 1:
-            return
+def create_popup_content(number, base):
+    global bits_in_word
 
-        v = parse_number(view.substr(view.sel()[0]).strip())
-        if v is None:
-            return
+    # select max between (bit_length in settings) and (bit_length of selected number aligned to 4)
+    curr_bits_in_word = max(bits_in_word, number.bit_length() + ((-number.bit_length()) & 0x3))
 
-        number, base = v
-
-        global bits_in_word
-
-        # select max between (bit_length in settings) and (bit_length of selected number aligned to 4)
-        curr_bits_in_word = max(bits_in_word, number.bit_length() + ((-number.bit_length()) & 0x3))
-
-        html = """
-            <body id=show>
+    return """<body id=show>
                 <style>
                     span  {{ font-size: 0.35rem; }}
                     #swap {{ color: var(--yellowish); }}
                     #bits {{ color: var(--foreground); }}
                 </style>
-                <div><a href='{{"base":16, "num":{0}}}'>Hex</a>: {1}</div>
-                <div><a href='{{"base":10, "num":{0}}}'>Dec</a>: {2}</div>
-                <div><a href='{{"base":8, "num":{0}}}'>Oct</a>: {3}</div>
-                <div><a href='{{"base":2, "num":{0}}}'>Bin</a>: {4}</div>
-                <div id='swap'><a id='swap' href='{{}}'>swap</a> {5}</div>
+                <div><a href='{{ "func": "convert_number",
+                    "data": {{ "base":16, "num":{num} }}
+                }}'>Hex</a>: {hex}</div>
+                <div><a href='{{ "func": "convert_number",
+                    "data": {{ "base":10, "num":{num} }}
+                }}'>Dec</a>: {dec}</div>
+                <div><a href='{{ "func": "convert_number",
+                    "data": {{ "base":8, "num":{num} }}
+                }}'>Oct</a>: {oct}</div>
+                <div><a href='{{ "func": "convert_number",
+                    "data": {{ "base":2, "num":{num} }}
+                }}'>Bin</a>: {bin}</div>
+                <div id='swap'><a id='swap' href='{{ "func": "swap_positions",
+                    "data": {{ "base":{base}, "num":{num} }}
+                }}'>swap</a> {pos}</div>
             </body>
         """.format(
-            number,
-            format_str("{:x}".format(number), 2),
-            format_str("{}".format(number), 3, ","),
-            format_str("{:o}".format(number), 3),
-            prepare_urls(
+            num = number,
+            base = base,
+            hex = format_str("{:x}".format(number), 2),
+            dec = format_str("{}".format(number), 3, ","),
+            oct = format_str("{:o}".format(number), 3),
+            bin = prepare_urls(
                 format_str(
                     format_str(
                         "{:0={}b}".format(number, curr_bits_in_word),
@@ -158,20 +161,27 @@ class DisplayNumberListener(sublime_plugin.EventListener):
                 base,
                 number
             ).replace(temp_small_space, small_space),
-            get_bits_positions(curr_bits_in_word)
+            pos = get_bits_positions(curr_bits_in_word)
         )
+
+class DisplayNumberListener(sublime_plugin.EventListener):
+    def on_selection_modified_async(self, view):
+        # if more then one select close popup
+        if len(view.sel()) > 1:
+            return
+
+        parsed = parse_number(view.substr(view.sel()[0]).strip())
+        if parsed is None:
+            return
 
         def select_function(x):
             data = json.loads(x)
-            if data.get("offset") is not None:
-                view.run_command("change_bit", data)
-            elif data.get("num") is not None:
-                view.run_command("convert_number", data)
-            else:
-                view.run_command("swap_positions")
+
+            if data.get("func") is not None:
+                view.run_command(data.get("func"), data.get("data"))
 
         view.show_popup(
-            html,
+            create_popup_content(parsed["number"], parsed["base"]),
             max_width = 1024,
             location = view.sel()[0].a,
             on_navigate = select_function
@@ -212,14 +222,13 @@ class ConvertNumberCommand(sublime_plugin.TextCommand):
         self.view.replace(edit, selected_range, convert_number(num, base))
 
 class ChangeBitCommand(sublime_plugin.TextCommand):
-    def run(self, edit, num, base, offset):
+    def run(self, edit, base, num, offset):
         selected_range = self.view.sel()[0]
         self.view.replace(edit, selected_range, convert_number(num ^ (1 << offset), base))
 
 class SwapPositionsCommand(sublime_plugin.TextCommand):
-    def run(self, edit):
+    def run(self, edit, base, num):
         global position_reversed
         position_reversed = not position_reversed
 
-        selected_range = self.view.sel()[0]
-        self.view.replace(edit, selected_range, self.view.substr(selected_range).strip())
+        self.view.update_popup(create_popup_content(num, base))
