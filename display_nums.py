@@ -5,6 +5,8 @@ import re
 import json
 
 plugin_settings = None
+bits_in_word
+position_reversed
 
 dec_re = re.compile(r"^(0|([1-9][0-9]*))(u|l|ul|lu|ull|llu)?$", re.I)
 hex_re = re.compile(r"^0x([0-9a-f]+)(u|l|ul|lu|ull|llu)?$", re.I)
@@ -17,43 +19,38 @@ small_space = "<span>"+space+"</span>"
 
 def plugin_loaded():
     global plugin_settings
-    plugin_settings = Settings("display_nums.sublime-settings")
+    plugin_settings = sublime.load_settings("display_nums.sublime-settings")
 
-# event on settings "add on change"
-class Settings:
-    def __init__(self, name):
-        self.settings = sublime.load_settings(name)
+    plugin_settings.add_on_change("bytes_in_word", get_bits_in_word)
+    plugin_settings.add_on_change("bit_positions_reversed", get_positions_reversed)
 
-    def __getattribute__(self, name):
-        try:
-            return object.__getattribute__(self, name)
-        except AttributeError:
-            return object.__getattribute__(self.settings, name)
+def get_bits_in_word():
+    global plugin_settings
+    global bits_in_word
+    project_settings = sublime.active_window().active_view().settings()
 
-    def set_view_settings(self, settings):
-        self.view_settings = settings
+    if project_settings.has("disnum.bytes_in_word"):
+        bytes_in_word = project_settings.get("disnum.bytes_in_word")
+    else:
+        bytes_in_word = plugin_settings.get("bytes_in_word")
 
-    def bit_length(self):
-        if self.view_settings.has("disnum.bytes_in_word"):
-            bytes_in_word = self.view_settings.get("disnum.bytes_in_word")
-        else:
-            bytes_in_word = self.settings.get("bytes_in_word", 4)
+    if not isinstance(bytes_in_word, int):
+        bits_in_word = 4 * 8
 
-        if not isinstance(bytes_in_word, int):
-            return 4 * 8
+    bits_in_word = bytes_in_word * 8
 
-        return bytes_in_word * 8
+def get_positions_reversed():
+    global plugin_settings
+    global position_reversed
+    project_settings = sublime.active_window().active_view().settings()
 
-    def is_positions_reversed(self):
-        if self.view_settings.has("disnum.bit_positions_reversed"):
-            position_reversed = self.view_settings.get("disnum.bit_positions_reversed")
-        else:
-           position_reversed = self.settings.get("bit_positions_reversed", False)
+    if project_settings.has("disnum.bit_positions_reversed"):
+        position_reversed = project_settings.get("disnum.bit_positions_reversed")
+    else:
+        position_reversed = plugin_settings.get("bit_positions_reversed")
 
-        if not isinstance(position_reversed, bool):
-            return False
-
-        return position_reversed
+    if not isinstance(position_reversed, bool):
+        position_reversed = False
 
 def format_str(string, num, separator=" "):
     res = string[-num:]
@@ -64,13 +61,13 @@ def format_str(string, num, separator=" "):
 
     return res
 
-def get_bits_positions(bits_in_word):
+def get_bits_positions(curr_bits_in_word):
+    global position_reversed
     positions = ""
     start = 0
-    reversed_bits = plugin_settings.is_positions_reversed()
 
-    while start < bits_in_word:
-        if reversed_bits:
+    while start < curr_bits_in_word:
+        if position_reversed:
             positions += "{: <4}".format(start)
         else:
             positions = "{: >4}".format(start) + positions
@@ -127,10 +124,10 @@ class DisplayNumberListener(sublime_plugin.EventListener):
 
         number, base = v
 
-        # select max between (bit_length in settings) and (bit_length of selected number aligned to 4)
-        bits_in_word = max(plugin_settings.bit_length(), number.bit_length() + ((-number.bit_length()) & 0x3))
+        global bits_in_word
 
-        positions = get_bits_positions(bits_in_word)
+        # select max between (bit_length in settings) and (bit_length of selected number aligned to 4)
+        curr_bits_in_word = max(bits_in_word, number.bit_length() + ((-number.bit_length()) & 0x3))
 
         html = """
             <body id=show>
@@ -143,7 +140,7 @@ class DisplayNumberListener(sublime_plugin.EventListener):
                 <div><a href='{{"base":10, "num":{0}}}'>Dec</a>: {2}</div>
                 <div><a href='{{"base":8, "num":{0}}}'>Oct</a>: {3}</div>
                 <div><a href='{{"base":2, "num":{0}}}'>Bin</a>: {4}</div>
-                <div><a id='swap' href='{{}}'>swap</a> {5}</div>
+                <div id='swap'><a id='swap' href='{{}}'>swap</a> {5}</div>
             </body>
         """.format(
             number,
@@ -153,7 +150,7 @@ class DisplayNumberListener(sublime_plugin.EventListener):
             prepare_urls(
                 format_str(
                     format_str(
-                        "{:0={}b}".format(number, bits_in_word),
+                        "{:0={}b}".format(number, curr_bits_in_word),
                         4,
                         temp_small_space),
                     1,
@@ -161,7 +158,7 @@ class DisplayNumberListener(sublime_plugin.EventListener):
                 base,
                 number
             ).replace(temp_small_space, small_space),
-            positions
+            get_bits_positions(curr_bits_in_word)
         )
 
         def select_function(x):
@@ -181,7 +178,10 @@ class DisplayNumberListener(sublime_plugin.EventListener):
         )
 
     def on_activated_async(self, view):
-        plugin_settings.set_view_settings(view.settings())
+        view.settings().clear_on_change("disnum.bytes_in_word")
+        view.settings().add_on_change("disnum.bytes_in_word", get_bits_in_word)
+
+        get_bits_in_word()
 
 def convert_number(num, base):
     if base == 10:
@@ -218,7 +218,8 @@ class ChangeBitCommand(sublime_plugin.TextCommand):
 
 class SwapPositionsCommand(sublime_plugin.TextCommand):
     def run(self, edit):
-        plugin_settings.set("bit_positions_reversed", not plugin_settings.is_positions_reversed())
+        global position_reversed
+        position_reversed = not position_reversed
 
         selected_range = self.view.sel()[0]
         self.view.replace(edit, selected_range, self.view.substr(selected_range).strip())
