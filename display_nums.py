@@ -127,22 +127,31 @@ def create_popup_content(number, base):
                     span  {{ font-size: 0.35rem; }}
                     #swap {{ color: var(--yellowish); }}
                     #bits {{ color: var(--foreground); }}
+                    #options {{ margin-top: 10px; }}
                 </style>
                 <div><a href='{{ "func": "convert_number",
-                    "data": {{ "base":16, "num":{num} }}
+                    "data": {{ "base":16 }}
                 }}'>Hex</a>: {hex}</div>
                 <div><a href='{{ "func": "convert_number",
-                    "data": {{ "base":10, "num":{num} }}
+                    "data": {{ "base":10 }}
                 }}'>Dec</a>: {dec}</div>
                 <div><a href='{{ "func": "convert_number",
-                    "data": {{ "base":8, "num":{num} }}
+                    "data": {{ "base":8 }}
                 }}'>Oct</a>: {oct}</div>
                 <div><a href='{{ "func": "convert_number",
-                    "data": {{ "base":2, "num":{num} }}
+                    "data": {{ "base":2 }}
                 }}'>Bin</a>: {bin}</div>
                 <div id='swap'><a id='swap' href='{{ "func": "swap_positions",
                     "data": {{ "base":{base}, "num":{num} }}
                 }}'>swap</a> {pos}</div>
+                <div id='options'>Swap endianness as
+                    <a href='{{ "func": "swap_endianness", "data" : {{ "bits": 16 }} }}'>
+                    16 bit</a>
+                    <a href='{{ "func": "swap_endianness", "data" : {{ "bits": 32 }} }}'>
+                    32 bit</a>
+                    <a href='{{ "func": "swap_endianness", "data" : {{ "bits": 64 }} }}'>
+                    64 bit</a>
+                </div>
             </body>
         """.format(
             num = number,
@@ -204,22 +213,18 @@ def convert_number(num, base):
         return "0{:o}".format(num)
 
 class ConvertNumberCommand(sublime_plugin.TextCommand):
-    def run(self, edit, base, num = None):
-        selected_range = self.view.sel()[0]
-
-        if num is not None:
-            self.view.replace(edit, selected_range, convert_number(num, base))
+    def run(self, edit, base):
+        if len(self.view.sel()) > 1:
             return
 
+        selected_range = self.view.sel()[0]
         selected_number = self.view.substr(selected_range).strip()
 
-        v = parse_number(selected_number)
-        if v is None:
+        parsed = parse_number(selected_number)
+        if parsed is None:
             return
 
-        num, _ = v
-
-        self.view.replace(edit, selected_range, convert_number(num, base))
+        self.view.replace(edit, selected_range, convert_number(parsed["number"], base))
 
 class ChangeBitCommand(sublime_plugin.TextCommand):
     def run(self, edit, base, num, offset):
@@ -232,3 +237,35 @@ class SwapPositionsCommand(sublime_plugin.TextCommand):
         position_reversed = not position_reversed
 
         self.view.update_popup(create_popup_content(num, base))
+
+class SwapEndiannessCommand(sublime_plugin.TextCommand):
+    def run(self, edit, bits):
+        if len(self.view.sel()) > 1:
+            return
+
+        selected_range = self.view.sel()[0]
+        selected_number = self.view.substr(selected_range).strip()
+
+        parsed = parse_number(selected_number)
+        if parsed is None:
+            return
+
+        bit_len = parsed["number"].bit_length()
+        # align bit length to bits
+        bit_len = bit_len + ((-bit_len) & (bits - 1))
+
+        bytes_len = bit_len // 8
+
+        number = parsed["number"].to_bytes(bytes_len, byteorder="big")
+
+        bytes_word = bits // 8
+
+        result = []
+
+        for i in range(bytes_word, bytes_len + 1, bytes_word):
+            for j in range(0, bytes_word):
+                result.append(number[i - j - 1])
+
+        result = int.from_bytes(bytes(result), byteorder="big")
+
+        self.view.replace(edit, selected_range, convert_number(result, parsed["base"]))
