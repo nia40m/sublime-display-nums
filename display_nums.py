@@ -52,6 +52,20 @@ def get_positions_reversed():
     if not isinstance(position_reversed, bool):
         position_reversed = False
 
+def get_popup_mode():
+    global plugin_settings
+    project_settings = sublime.active_window().active_view().settings()
+
+    if project_settings.has("disnum.extended_mode"):
+        return project_settings.get("disnum.extended_mode")
+
+    extended = plugin_settings.get("extended_mode")
+
+    if not isinstance(extended, bool):
+        return False
+
+    return extended
+
 def format_str(string, num, separator=" "):
     res = string[-num:]
     string = string[:-num]
@@ -116,44 +130,69 @@ def parse_number(text):
     if match:
         return {"number": int(match.group(1), 2), "base": 2}
 
+html_basic = """
+<body id='show'>
+    <style>
+        span  {{ font-size: 0.35rem; }}
+        #swap {{ color: var(--yellowish); }}
+        #bits {{ color: var(--foreground); }}
+    </style>
+    <div>Hex: {hex}</div>
+    <div>Dec: {dec}</div>
+    <div>Oct: {oct}</div>
+    <div>Bin: {bin}</div>
+    <div id='swap'><a id='swap' href='{{ "func": "swap_positions",
+        "data": {{ "base":{base}, "num":{num} }}
+    }}'>swap</a> {pos}</div>
+</body>
+"""
+
+html_extended = """
+<body id='show'>
+    <style>
+        span  {{ font-size: 0.35rem; }}
+        #swap {{ color: var(--yellowish); }}
+        #bits {{ color: var(--foreground); }}
+        #options {{ margin-top: 10px; }}
+    </style>
+    <div><a href='{{ "func": "convert_number",
+        "data": {{ "base":16 }}
+    }}'>Hex</a>: {hex}</div>
+    <div><a href='{{ "func": "convert_number",
+        "data": {{ "base":10 }}
+    }}'>Dec</a>: {dec}</div>
+    <div><a href='{{ "func": "convert_number",
+        "data": {{ "base":8 }}
+    }}'>Oct</a>: {oct}</div>
+    <div><a href='{{ "func": "convert_number",
+        "data": {{ "base":2 }}
+    }}'>Bin</a>: {bin}</div>
+    <div id='swap'><a id='swap' href='{{ "func": "swap_positions",
+        "data": {{ "base":{base}, "num":{num} }}
+    }}'>swap</a> {pos}</div>
+    <div id='options'>Swap endianness as
+        <a href='{{ "func": "swap_endianness", "data" : {{ "bits": 16 }} }}'>
+        16 bit</a>
+        <a href='{{ "func": "swap_endianness", "data" : {{ "bits": 32 }} }}'>
+        32 bit</a>
+        <a href='{{ "func": "swap_endianness", "data" : {{ "bits": 64 }} }}'>
+        64 bit</a>
+    </div>
+</body>
+"""
+
 def create_popup_content(number, base):
     global bits_in_word
 
     # select max between (bit_length in settings) and (bit_length of selected number aligned to 4)
     curr_bits_in_word = max(bits_in_word, number.bit_length() + ((-number.bit_length()) & 0x3))
 
-    return """<body id=show>
-                <style>
-                    span  {{ font-size: 0.35rem; }}
-                    #swap {{ color: var(--yellowish); }}
-                    #bits {{ color: var(--foreground); }}
-                    #options {{ margin-top: 10px; }}
-                </style>
-                <div><a href='{{ "func": "convert_number",
-                    "data": {{ "base":16 }}
-                }}'>Hex</a>: {hex}</div>
-                <div><a href='{{ "func": "convert_number",
-                    "data": {{ "base":10 }}
-                }}'>Dec</a>: {dec}</div>
-                <div><a href='{{ "func": "convert_number",
-                    "data": {{ "base":8 }}
-                }}'>Oct</a>: {oct}</div>
-                <div><a href='{{ "func": "convert_number",
-                    "data": {{ "base":2 }}
-                }}'>Bin</a>: {bin}</div>
-                <div id='swap'><a id='swap' href='{{ "func": "swap_positions",
-                    "data": {{ "base":{base}, "num":{num} }}
-                }}'>swap</a> {pos}</div>
-                <div id='options'>Swap endianness as
-                    <a href='{{ "func": "swap_endianness", "data" : {{ "bits": 16 }} }}'>
-                    16 bit</a>
-                    <a href='{{ "func": "swap_endianness", "data" : {{ "bits": 32 }} }}'>
-                    32 bit</a>
-                    <a href='{{ "func": "swap_endianness", "data" : {{ "bits": 64 }} }}'>
-                    64 bit</a>
-                </div>
-            </body>
-        """.format(
+    if get_popup_mode():
+        html = html_extended
+    else:
+        html = html_basic
+
+    return html.format(
             num = number,
             base = base,
             hex = format_str("{:x}".format(number), 2),
@@ -200,7 +239,11 @@ class DisplayNumberListener(sublime_plugin.EventListener):
         view.settings().clear_on_change("disnum.bytes_in_word")
         view.settings().add_on_change("disnum.bytes_in_word", get_bits_in_word)
 
+        view.settings().clear_on_change("disnum.bit_positions_reversed")
+        view.settings().add_on_change("disnum.bit_positions_reversed", get_positions_reversed)
+
         get_bits_in_word()
+        get_positions_reversed()
 
 def convert_number(num, base):
     if base == 10:
