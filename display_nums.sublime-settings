@@ -3,5 +3,10 @@
 	"bytes_in_word": 4,
 
     // reverse bit positions (needed in different architectures)
-    "bit_positions_reversed": false
+    "bit_positions_reversed": false,
+
+    // extended mode add to popup more buttons:
+    // - convert number
+    // - swap endianness
+    "extended_mode": false
 }
