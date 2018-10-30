@@ -24,12 +24,12 @@ Or you can define project specific settings by adding "**disnum.**" to the setti
 *user settings file*
 ```json
 {
-	"bytes_in_word": 4
+	"extended_mode": false
 }
 ```
 *project settings file*
 ```json
 {
-	"disnum.bytes_in_word": 4
+	"disnum.extended_mode": false
 }
 ```
