@@ -216,11 +216,11 @@ class DisplayNumberListener(sublime_plugin.EventListener):
     def on_selection_modified_async(self, view):
         # if more then one select close popup
         if len(view.sel()) > 1:
-            return
+            return view.hide_popup()
 
         parsed = parse_number(view.substr(view.sel()[0]).strip())
         if parsed is None:
-            return
+            return view.hide_popup()
 
         def select_function(x):
             data = json.loads(x)
@@ -258,14 +258,14 @@ def convert_number(num, base):
 class ConvertNumberCommand(sublime_plugin.TextCommand):
     def run(self, edit, base):
         if len(self.view.sel()) > 1:
-            return
+            return self.view.hide_popup()
 
         selected_range = self.view.sel()[0]
         selected_number = self.view.substr(selected_range).strip()
 
         parsed = parse_number(selected_number)
         if parsed is None:
-            return
+            return self.view.hide_popup()
 
         self.view.replace(edit, selected_range, convert_number(parsed["number"], base))
 
@@ -284,14 +284,14 @@ class SwapPositionsCommand(sublime_plugin.TextCommand):
 class SwapEndiannessCommand(sublime_plugin.TextCommand):
     def run(self, edit, bits):
         if len(self.view.sel()) > 1:
-            return
+            return self.view.hide_popup()
 
         selected_range = self.view.sel()[0]
         selected_number = self.view.substr(selected_range).strip()
 
         parsed = parse_number(selected_number)
         if parsed is None:
-            return
+            return self.view.hide_popup()
 
         bit_len = parsed["number"].bit_length()
         # align bit length to bits
