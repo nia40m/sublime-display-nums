@@ -231,7 +231,7 @@ class DisplayNumberListener(sublime_plugin.EventListener):
         view.show_popup(
             create_popup_content(parsed["number"], parsed["base"]),
             max_width = 1024,
-            location = view.sel()[0].a,
+            location = view.sel()[0].begin(),
             on_navigate = select_function
         )
 
