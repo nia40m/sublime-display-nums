@@ -8,10 +8,10 @@ plugin_settings = None
 bits_in_word = None
 position_reversed = None
 
-dec_re = re.compile(r"^(0|([1-9][0-9]*))(u|l|ul|lu|ull|llu)?$", re.I)
-hex_re = re.compile(r"^0x([0-9a-f]+)(u|l|ul|lu|ull|llu)?$", re.I)
-oct_re = re.compile(r"^(0[0-7]+)(u|l|ul|lu|ull|llu)?$", re.I)
-bin_re = re.compile(r"^0b([01]+)(u|l|ul|lu|ull|llu)?$", re.I)
+dec_re = re.compile(r"^(0|([1-9][0-9]*))(u|l|ul|lu|ll|ull|llu)?$", re.I)
+hex_re = re.compile(r"^0x([0-9a-f]+)(u|l|ul|lu|ll|ull|llu)?$", re.I)
+oct_re = re.compile(r"^(0[0-7]+)(u|l|ul|lu|ll|ull|llu)?$", re.I)
+bin_re = re.compile(r"^0b([01]+)(u|l|ul|lu|ll|ull|llu)?$", re.I)
 
 space = "&nbsp;"
 temp_small_space = "*"
