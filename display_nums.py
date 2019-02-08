@@ -220,7 +220,7 @@ class DisplayNumberListener(sublime_plugin.EventListener):
 
         parsed = parse_number(view.substr(view.sel()[0]).strip())
         if parsed is None:
-            return view.hide_popup()
+            return
 
         def select_function(x):
             data = json.loads(x)
@@ -230,8 +230,9 @@ class DisplayNumberListener(sublime_plugin.EventListener):
 
         view.show_popup(
             create_popup_content(parsed["number"], parsed["base"]),
+            flags=sublime.HIDE_ON_MOUSE_MOVE_AWAY,
             max_width = 1024,
-            location = view.sel()[0].a,
+            location = view.sel()[0].begin(),
             on_navigate = select_function
         )
 
