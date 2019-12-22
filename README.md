@@ -10,6 +10,10 @@ This plugin converts the selected number in decimal, hexadecimal, binary or octa
 
 ![popup example](screenshot_extended.png "popup extended example")
 
+### Installation
+
+Clone this repository or download zip archive into the Sublime 3 package directory (you can find it in menu option `Preferences -> Browse Packages...`). **Keep in mind** that plugin folder name should be `sublime-display-nums`.
+
 ### Aditional functionality
 * Pressing any digit of binary number makes it opposit of it's current value.
 * "swap" button swaps the bit positions what can be usefull in some architectures.
@@ -24,12 +28,12 @@ Or you can define project specific settings by adding "**disnum.**" to the setti
 *user settings file*
 ```json
 {
-	"extended_mode": false
+    "extended_mode": false
 }
 ```
 *project settings file*
 ```json
 {
-	"disnum.extended_mode": false
+    "disnum.extended_mode": false
 }
 ```
