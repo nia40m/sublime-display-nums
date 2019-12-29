@@ -1,22 +1,23 @@
 [
+	// Uncomment a needed functionality or add other keys
 	// convert selected number to hexadecimal numeral system
-	{ "keys":[""], "command": "convert_number", "args":{ "base": 16 } },
+	//{ "keys":["ctrl+shift+x"], "command": "convert_number", "args":{ "base": 16 } },
 
 	// convert selected number to decimal numeral system
-	{ "keys":[""], "command": "convert_number", "args":{ "base": 10 } },
+	//{ "keys":["ctrl+shift+g"], "command": "convert_number", "args":{ "base": 10 } },
 
 	// convert selected number to octal numeral system
-	{ "keys":[""], "command": "convert_number", "args":{ "base": 8 } },
+	//{ "keys":["ctrl+shift+o"], "command": "convert_number", "args":{ "base": 8 } },
 
 	// convert selected number to binary numeral system
-	{ "keys":[""], "command": "convert_number", "args":{ "base": 2 } },
+	//{ "keys":["ctrl+shift+c"], "command": "convert_number", "args":{ "base": 2 } },
 
 	// swap endianness of selected number for 16 bit word length
-	{ "keys":[""], "command": "swap_endianness", "args":{ "bits": 16 } },
+	//{ "keys":["ctrl+shift+y"], "command": "swap_endianness", "args":{ "bits": 16 } },
 
 	// swap endianness of selected number for 32 bit word length
-	{ "keys":[""], "command": "swap_endianness", "args":{ "bits": 32 } },
+	//{ "keys":["ctrl+shift+w"], "command": "swap_endianness", "args":{ "bits": 32 } },
 
 	// swap endianness of selected number for 64 bit word length
-	{ "keys":[""], "command": "swap_endianness", "args":{ "bits": 64 } }
+	//{ "keys":["ctrl+shift+q"], "command": "swap_endianness", "args":{ "bits": 64 } }
 ]
