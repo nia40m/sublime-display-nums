@@ -8,6 +8,7 @@ plugin_settings = None
 bits_in_word = None
 position_reversed = None
 
+split_re = re.compile(r"\B_\B", re.I)
 dec_re = re.compile(r"^(0|([1-9][0-9]*))(u|l|ul|lu|ll|ull|llu)?$", re.I)
 hex_re = re.compile(r"^0x([0-9a-f]+)(u|l|ul|lu|ll|ull|llu)?$", re.I)
 oct_re = re.compile(r"^(0[0-7]+)(u|l|ul|lu|ll|ull|llu)?$", re.I)
@@ -114,6 +115,9 @@ def prepare_urls(s, base, num):
     return res
 
 def parse_number(text):
+    # remove underscores in the number
+    text = "".join(split_re.split(text))
+
     match = dec_re.match(text)
     if match:
         return {"number": int(match.group(1), 10), "base": 10}
