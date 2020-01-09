@@ -1,0 +1,9 @@
+[
+    { "caption":"Disnum: convert to hexadecimal", "command": "convert_number", "args":{ "base": 16 } },
+    { "caption":"Disnum: convert to decimal", "command": "convert_number", "args":{ "base": 10 } },
+    { "caption":"Disnum: convert to octal", "command": "convert_number", "args":{ "base": 8 } },
+    { "caption":"Disnum: convert to binary", "command": "convert_number", "args":{ "base": 2 } },
+    { "caption":"Disnum: swap as 16 bit word", "command": "swap_endianness", "args":{ "bits": 16 } },
+    { "caption":"Disnum: swap as 32 bit word", "command": "swap_endianness", "args":{ "bits": 32 } },
+    { "caption":"Disnum: swap as 64 bit word", "command": "swap_endianness", "args":{ "bits": 64 } }
+]
