@@ -4,10 +4,7 @@ import sublime_plugin
 import re
 import json
 
-plugin_settings = None
-bits_in_word = None
-position_reversed = None
-
+split_re = re.compile(r"\B_\B", re.I)
 dec_re = re.compile(r"^(0|([1-9][0-9]*))(u|l|ul|lu|ll|ull|llu)?$", re.I)
 hex_re = re.compile(r"^0x([0-9a-f]+)(u|l|ul|lu|ll|ull|llu)?$", re.I)
 oct_re = re.compile(r"^(0[0-7]+)(u|l|ul|lu|ll|ull|llu)?$", re.I)
@@ -17,49 +14,39 @@ space = "&nbsp;"
 temp_small_space = "*"
 small_space = "<span>"+space+"</span>"
 
-def plugin_loaded():
-    global plugin_settings
-    plugin_settings = sublime.load_settings("display_nums.sublime-settings")
-
-    plugin_settings.add_on_change("bytes_in_word", get_bits_in_word)
-    plugin_settings.add_on_change("bit_positions_reversed", get_positions_reversed)
-
-def get_bits_in_word():
-    global plugin_settings
-    global bits_in_word
-    project_settings = sublime.active_window().active_view().settings()
-
+def get_bits_in_word(project_settings):
     if project_settings.has("disnum.bytes_in_word"):
         bytes_in_word = project_settings.get("disnum.bytes_in_word")
     else:
-        bytes_in_word = plugin_settings.get("bytes_in_word")
+        bytes_in_word = sublime.load_settings("display_nums.sublime-settings").get("bytes_in_word")
 
     if not isinstance(bytes_in_word, int):
-        bits_in_word = 4 * 8
+        return 4 * 8
 
-    bits_in_word = bytes_in_word * 8
+    return bytes_in_word * 8
 
-def get_positions_reversed():
-    global plugin_settings
-    global position_reversed
-    project_settings = sublime.active_window().active_view().settings()
-
+def get_positions_reversed(project_settings):
     if project_settings.has("disnum.bit_positions_reversed"):
         position_reversed = project_settings.get("disnum.bit_positions_reversed")
     else:
-        position_reversed = plugin_settings.get("bit_positions_reversed")
+        position_reversed = sublime.load_settings("display_nums.sublime-settings").get("bit_positions_reversed")
 
     if not isinstance(position_reversed, bool):
-        position_reversed = False
+        return False
 
-def get_popup_mode():
-    global plugin_settings
-    project_settings = sublime.active_window().active_view().settings()
+    return position_reversed
 
+def reverse_positions_reversed(project_settings):
+    if project_settings.has("disnum.bit_positions_reversed"):
+        project_settings.set("disnum.bit_positions_reversed", not get_positions_reversed(project_settings))
+    else:
+        sublime.load_settings("display_nums.sublime-settings").set("bit_positions_reversed", not get_positions_reversed(project_settings))
+
+def get_popup_mode(project_settings):
     if project_settings.has("disnum.extended_mode"):
         return project_settings.get("disnum.extended_mode")
 
-    extended = plugin_settings.get("extended_mode")
+    extended = sublime.load_settings("display_nums.sublime-settings").get("extended_mode")
 
     if not isinstance(extended, bool):
         return False
@@ -75,13 +62,12 @@ def format_str(string, num, separator=" "):
 
     return res
 
-def get_bits_positions(curr_bits_in_word):
-    global position_reversed
+def get_bits_positions(settings, curr_bits_in_word):
     positions = ""
     start = 0
 
     while start < curr_bits_in_word:
-        if position_reversed:
+        if get_positions_reversed(settings):
             positions += "{: <4}".format(start)
         else:
             positions = "{: >4}".format(start) + positions
@@ -114,6 +100,9 @@ def prepare_urls(s, base, num):
     return res
 
 def parse_number(text):
+    # remove underscores in the number
+    text = "".join(split_re.split(text))
+
     match = dec_re.match(text)
     if match:
         return {"number": int(match.group(1), 10), "base": 10}
@@ -181,13 +170,11 @@ html_extended = """
 </body>
 """
 
-def create_popup_content(number, base):
-    global bits_in_word
-
+def create_popup_content(settings, number, base):
     # select max between (bit_length in settings) and (bit_length of selected number aligned to 4)
-    curr_bits_in_word = max(bits_in_word, number.bit_length() + ((-number.bit_length()) & 0x3))
+    curr_bits_in_word = max(get_bits_in_word(settings), number.bit_length() + ((-number.bit_length()) & 0x3))
 
-    if get_popup_mode():
+    if get_popup_mode(settings):
         html = html_extended
     else:
         html = html_basic
@@ -209,7 +196,7 @@ def create_popup_content(number, base):
                 base,
                 number
             ).replace(temp_small_space, small_space),
-            pos = get_bits_positions(curr_bits_in_word)
+            pos = get_bits_positions(settings, curr_bits_in_word)
         )
 
 class DisplayNumberListener(sublime_plugin.EventListener):
@@ -229,22 +216,12 @@ class DisplayNumberListener(sublime_plugin.EventListener):
                 view.run_command(data.get("func"), data.get("data"))
 
         view.show_popup(
-            create_popup_content(parsed["number"], parsed["base"]),
+            create_popup_content(view.settings(), parsed["number"], parsed["base"]),
             flags=sublime.HIDE_ON_MOUSE_MOVE_AWAY,
             max_width = 1024,
             location = view.sel()[0].begin(),
             on_navigate = select_function
         )
-
-    def on_activated_async(self, view):
-        view.settings().clear_on_change("disnum.bytes_in_word")
-        view.settings().add_on_change("disnum.bytes_in_word", get_bits_in_word)
-
-        view.settings().clear_on_change("disnum.bit_positions_reversed")
-        view.settings().add_on_change("disnum.bit_positions_reversed", get_positions_reversed)
-
-        get_bits_in_word()
-        get_positions_reversed()
 
 def convert_number(num, base):
     if base == 10:
@@ -277,10 +254,9 @@ class ChangeBitCommand(sublime_plugin.TextCommand):
 
 class SwapPositionsCommand(sublime_plugin.TextCommand):
     def run(self, edit, base, num):
-        global position_reversed
-        position_reversed = not position_reversed
+        reverse_positions_reversed(self.view.settings())
 
-        self.view.update_popup(create_popup_content(num, base))
+        self.view.update_popup(create_popup_content(self.view.settings(), num, base))
 
 class SwapEndiannessCommand(sublime_plugin.TextCommand):
     def run(self, edit, bits):
