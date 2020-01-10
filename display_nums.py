@@ -4,6 +4,8 @@ import sublime_plugin
 import re
 import json
 
+popup_mode_list = ["basic", "extended", "tabled"]
+
 split_re = re.compile(r"\B_\B", re.I)
 dec_re = re.compile(r"^(0|([1-9][0-9]*))(u|l|ul|lu|ll|ull|llu)?$", re.I)
 hex_re = re.compile(r"^0x([0-9a-f]+)(u|l|ul|lu|ll|ull|llu)?$", re.I)
@@ -14,11 +16,14 @@ space = "&nbsp;"
 temp_small_space = "*"
 small_space = "<span>"+space+"</span>"
 
-def get_bits_in_word(project_settings):
-    if project_settings.has("disnum.bytes_in_word"):
-        bytes_in_word = project_settings.get("disnum.bytes_in_word")
+def get_setting_by_name(project_settings, name):
+    if project_settings.has("disnum." + name):
+        return project_settings.get("disnum." + name)
     else:
-        bytes_in_word = sublime.load_settings("display_nums.sublime-settings").get("bytes_in_word")
+        return sublime.load_settings("display_nums.sublime-settings").get(name)
+
+def get_bits_in_word(project_settings):
+    bytes_in_word = get_setting_by_name(project_settings, "bytes_in_word")
 
     if not isinstance(bytes_in_word, int):
         return 4 * 8
@@ -26,10 +31,7 @@ def get_bits_in_word(project_settings):
     return bytes_in_word * 8
 
 def get_positions_reversed(project_settings):
-    if project_settings.has("disnum.bit_positions_reversed"):
-        position_reversed = project_settings.get("disnum.bit_positions_reversed")
-    else:
-        position_reversed = sublime.load_settings("display_nums.sublime-settings").get("bit_positions_reversed")
+    position_reversed = get_setting_by_name(project_settings, "bit_positions_reversed")
 
     if not isinstance(position_reversed, bool):
         return False
@@ -43,15 +45,20 @@ def reverse_positions_reversed(project_settings):
         sublime.load_settings("display_nums.sublime-settings").set("bit_positions_reversed", not get_positions_reversed(project_settings))
 
 def get_popup_mode(project_settings):
-    if project_settings.has("disnum.extended_mode"):
-        return project_settings.get("disnum.extended_mode")
+    extended = get_setting_by_name(project_settings, "plugin_mode")
 
-    extended = sublime.load_settings("display_nums.sublime-settings").get("extended_mode")
-
-    if not isinstance(extended, bool):
-        return False
+    if not isinstance(extended, str):
+        return "basic"
 
     return extended
+
+def get_mouse_move_option(project_settings):
+    mouse_move = get_setting_by_name(project_settings, "hide_on_mouse_move_away")
+
+    if not isinstance(mouse_move, bool):
+        return sublime.HIDE_ON_MOUSE_MOVE_AWAY
+
+    return sublime.HIDE_ON_MOUSE_MOVE_AWAY if mouse_move else 0
 
 def format_str(string, num, separator=" "):
     res = string[-num:]
@@ -126,13 +133,13 @@ html_basic = """
         #swap {{ color: var(--yellowish); }}
         #bits {{ color: var(--foreground); }}
     </style>
-    <div>Hex: {hex}</div>
-    <div>Dec: {dec}</div>
-    <div>Oct: {oct}</div>
-    <div>Bin: {bin}</div>
+    <div>Hex:&nbsp;{hex}</div>
+    <div>Dec:&nbsp;{dec}</div>
+    <div>Oct:&nbsp;{oct}</div>
+    <div>Bin:&nbsp;{bin}</div>
     <div id='swap'><a id='swap' href='{{ "func": "swap_positions",
         "data": {{ "base":{base}, "num":{num} }}
-    }}'>swap</a> {pos}</div>
+    }}'>swap</a>&nbsp;{pos}</div>
 </body>
 """
 
@@ -146,19 +153,19 @@ html_extended = """
     </style>
     <div><a href='{{ "func": "convert_number",
         "data": {{ "base":16 }}
-    }}'>Hex</a>: {hex}</div>
+    }}'>Hex</a>:&nbsp;{hex}</div>
     <div><a href='{{ "func": "convert_number",
         "data": {{ "base":10 }}
-    }}'>Dec</a>: {dec}</div>
+    }}'>Dec</a>:&nbsp;{dec}</div>
     <div><a href='{{ "func": "convert_number",
         "data": {{ "base":8 }}
-    }}'>Oct</a>: {oct}</div>
+    }}'>Oct</a>:&nbsp;{oct}</div>
     <div><a href='{{ "func": "convert_number",
         "data": {{ "base":2 }}
-    }}'>Bin</a>: {bin}</div>
+    }}'>Bin</a>:&nbsp;{bin}</div>
     <div id='swap'><a id='swap' href='{{ "func": "swap_positions",
         "data": {{ "base":{base}, "num":{num} }}
-    }}'>swap</a> {pos}</div>
+    }}'>swap</a>&nbsp;{pos}</div>
     <div id='options'>Swap endianness as
         <a href='{{ "func": "swap_endianness", "data" : {{ "bits": 16 }} }}'>
         16 bit</a>
@@ -170,11 +177,11 @@ html_extended = """
 </body>
 """
 
-def create_popup_content(settings, number, base):
+def create_popup_content(settings, mode, number, base):
     # select max between (bit_length in settings) and (bit_length of selected number aligned to 4)
     curr_bits_in_word = max(get_bits_in_word(settings), number.bit_length() + ((-number.bit_length()) & 0x3))
 
-    if get_popup_mode(settings):
+    if mode == "extended":
         html = html_extended
     else:
         html = html_basic
@@ -199,15 +206,69 @@ def create_popup_content(settings, number, base):
             pos = get_bits_positions(settings, curr_bits_in_word)
         )
 
+def create_tabled_popup_content(number, hex_num):
+    name = ["Hex", "Dec", "Bin"]
+    base = [16, 10, 2]
+
+    # calculate length of strings
+    lens = [
+        max(len(name[0]), len(number)),
+        len('{:x}'.format(hex_num)),
+        max(len(name[0]), len('{:d}'.format(hex_num))),
+        len('{:b}'.format(hex_num))
+    ]
+
+    html = "<u>{}  {}  {}  {}</u>".format(
+        "{: <{}}".format(number, lens[0]),
+        "{: <{}}".format(name[0], lens[1] + len("0x")),
+        "{: <{}}".format(name[1], lens[2]),
+        "{: <{}}".format(name[2], lens[3] + len("0b"))
+    )
+
+    # convert from every numeral system
+    for i in range(0, len(name)):
+        try:
+            num = int(number, base[i])
+        except:
+            continue
+
+        html += "<div>{}  0x{}  {}  0b{}</div>".format(
+            "{: <{}}".format(name[i], lens[0]),
+            "{: <{}X}".format(num, lens[1]),
+            "{: <{}d}".format(num, lens[2]),
+            "{: <{}b}".format(num, lens[3])
+        )
+
+    return html.replace(" ", space)
+
 class DisplayNumberListener(sublime_plugin.EventListener):
     def on_selection_modified_async(self, view):
         # if more then one select close popup
         if len(view.sel()) > 1:
             return view.hide_popup()
 
-        parsed = parse_number(view.substr(view.sel()[0]).strip())
-        if parsed is None:
+        # selected string without spaces
+        string = view.substr(view.sel()[0]).strip()
+
+        # get plugin mode
+        mode = get_popup_mode(view.settings())
+        if mode not in popup_mode_list:
             return
+
+        if mode == "tabled":
+            # trying to convert string as hex
+            try:
+                hex_num = int(string, 16)
+            except:
+                return
+
+            html = create_tabled_popup_content(string, hex_num)
+        else:
+            parsed = parse_number(string)
+            if parsed is None:
+                return
+
+            html = create_popup_content(view.settings(), mode, parsed["number"], parsed["base"])
 
         def select_function(x):
             data = json.loads(x)
@@ -216,8 +277,8 @@ class DisplayNumberListener(sublime_plugin.EventListener):
                 view.run_command(data.get("func"), data.get("data"))
 
         view.show_popup(
-            create_popup_content(view.settings(), parsed["number"], parsed["base"]),
-            flags=sublime.HIDE_ON_MOUSE_MOVE_AWAY,
+            html,
+            flags=get_mouse_move_option(view.settings()),
             max_width = 1024,
             location = view.sel()[0].begin(),
             on_navigate = select_function
