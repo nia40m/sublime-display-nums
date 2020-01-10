@@ -14,11 +14,14 @@ space = "&nbsp;"
 temp_small_space = "*"
 small_space = "<span>"+space+"</span>"
 
-def get_bits_in_word(project_settings):
-    if project_settings.has("disnum.bytes_in_word"):
-        bytes_in_word = project_settings.get("disnum.bytes_in_word")
+def get_setting_by_name(project_settings, name):
+    if project_settings.has("disnum." + name):
+        return project_settings.get("disnum." + name)
     else:
-        bytes_in_word = sublime.load_settings("display_nums.sublime-settings").get("bytes_in_word")
+        return sublime.load_settings("display_nums.sublime-settings").get(name)
+
+def get_bits_in_word(project_settings):
+    bytes_in_word = get_setting_by_name(project_settings, "bytes_in_word")
 
     if not isinstance(bytes_in_word, int):
         return 4 * 8
@@ -26,10 +29,7 @@ def get_bits_in_word(project_settings):
     return bytes_in_word * 8
 
 def get_positions_reversed(project_settings):
-    if project_settings.has("disnum.bit_positions_reversed"):
-        position_reversed = project_settings.get("disnum.bit_positions_reversed")
-    else:
-        position_reversed = sublime.load_settings("display_nums.sublime-settings").get("bit_positions_reversed")
+    position_reversed = get_setting_by_name(project_settings, "bit_positions_reversed")
 
     if not isinstance(position_reversed, bool):
         return False
@@ -43,10 +43,7 @@ def reverse_positions_reversed(project_settings):
         sublime.load_settings("display_nums.sublime-settings").set("bit_positions_reversed", not get_positions_reversed(project_settings))
 
 def get_popup_mode(project_settings):
-    if project_settings.has("disnum.extended_mode"):
-        return project_settings.get("disnum.extended_mode")
-
-    extended = sublime.load_settings("display_nums.sublime-settings").get("extended_mode")
+    extended = get_setting_by_name(project_settings, "extended_mode")
 
     if not isinstance(extended, bool):
         return False
