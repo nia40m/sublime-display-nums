@@ -50,6 +50,14 @@ def get_popup_mode(project_settings):
 
     return extended
 
+def get_mouse_move_option(project_settings):
+    mouse_move = get_setting_by_name(project_settings, "hide_on_mouse_move_away")
+
+    if not isinstance(mouse_move, bool):
+        return sublime.HIDE_ON_MOUSE_MOVE_AWAY
+
+    return sublime.HIDE_ON_MOUSE_MOVE_AWAY if mouse_move else 0
+
 def format_str(string, num, separator=" "):
     res = string[-num:]
     string = string[:-num]
@@ -214,7 +222,7 @@ class DisplayNumberListener(sublime_plugin.EventListener):
 
         view.show_popup(
             create_popup_content(view.settings(), parsed["number"], parsed["base"]),
-            flags=sublime.HIDE_ON_MOUSE_MOVE_AWAY,
+            flags=get_mouse_move_option(view.settings()),
             max_width = 1024,
             location = view.sel()[0].begin(),
             on_navigate = select_function
