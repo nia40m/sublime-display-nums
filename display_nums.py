@@ -4,6 +4,8 @@ import sublime_plugin
 import re
 import json
 
+popup_mode_list = ["basic", "extended", "tabled"]
+
 split_re = re.compile(r"\B_\B", re.I)
 dec_re = re.compile(r"^(0|([1-9][0-9]*))(u|l|ul|lu|ll|ull|llu)?$", re.I)
 hex_re = re.compile(r"^0x([0-9a-f]+)(u|l|ul|lu|ll|ull|llu)?$", re.I)
@@ -175,13 +177,13 @@ html_extended = """
 </body>
 """
 
-def create_popup_content(settings, number, base):
+def create_popup_content(settings, mode, number, base):
     # select max between (bit_length in settings) and (bit_length of selected number aligned to 4)
     curr_bits_in_word = max(get_bits_in_word(settings), number.bit_length() + ((-number.bit_length()) & 0x3))
 
-    if get_popup_mode(settings) == "extended":
+    if mode == "extended":
         html = html_extended
-    elif get_popup_mode(settings) == "basic":
+    else:
         html = html_basic
 
     return html.format(
@@ -204,15 +206,69 @@ def create_popup_content(settings, number, base):
             pos = get_bits_positions(settings, curr_bits_in_word)
         )
 
+def create_tabled_popup_content(number, hex_num):
+    name = ["Hex", "Dec", "Bin"]
+    base = [16, 10, 2]
+
+    # calculate length of strings
+    lens = [
+        max(len(name[0]), len(number)),
+        len('{:x}'.format(hex_num)),
+        max(len(name[0]), len('{:d}'.format(hex_num))),
+        len('{:b}'.format(hex_num))
+    ]
+
+    html = "<u>{}  {}  {}  {}</u>".format(
+        "{: <{}}".format(number, lens[0]),
+        "{: <{}}".format(name[0], lens[1] + len("0x")),
+        "{: <{}}".format(name[1], lens[2]),
+        "{: <{}}".format(name[2], lens[3] + len("0b"))
+    )
+
+    # convert from every numeral system
+    for i in range(0, len(name)):
+        try:
+            num = int(number, base[i])
+        except:
+            continue
+
+        html += "<div>{}  0x{}  {}  0b{}</div>".format(
+            "{: <{}}".format(name[i], lens[0]),
+            "{: <{}X}".format(num, lens[1]),
+            "{: <{}d}".format(num, lens[2]),
+            "{: <{}b}".format(num, lens[3])
+        )
+
+    return html.replace(" ", space)
+
 class DisplayNumberListener(sublime_plugin.EventListener):
     def on_selection_modified_async(self, view):
         # if more then one select close popup
         if len(view.sel()) > 1:
             return view.hide_popup()
 
-        parsed = parse_number(view.substr(view.sel()[0]).strip())
-        if parsed is None:
+        # selected string without spaces
+        string = view.substr(view.sel()[0]).strip()
+
+        # get plugin mode
+        mode = get_popup_mode(view.settings())
+        if mode not in popup_mode_list:
             return
+
+        if mode == "tabled":
+            # trying to convert string as hex
+            try:
+                hex_num = int(string, 16)
+            except:
+                return
+
+            html = create_tabled_popup_content(string, hex_num)
+        else:
+            parsed = parse_number(string)
+            if parsed is None:
+                return
+
+            html = create_popup_content(view.settings(), mode, parsed["number"], parsed["base"])
 
         def select_function(x):
             data = json.loads(x)
@@ -221,7 +277,7 @@ class DisplayNumberListener(sublime_plugin.EventListener):
                 view.run_command(data.get("func"), data.get("data"))
 
         view.show_popup(
-            create_popup_content(view.settings(), parsed["number"], parsed["base"]),
+            html,
             flags=get_mouse_move_option(view.settings()),
             max_width = 1024,
             location = view.sel()[0].begin(),
