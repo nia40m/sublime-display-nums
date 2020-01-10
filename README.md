@@ -12,7 +12,7 @@ This plugin converts the selected number in decimal, hexadecimal, binary or octa
 
 ### Installation
 
-Clone this repository or download zip archive into the Sublime 3 package directory (you can find it in menu option `Preferences -> Browse Packages...`). **Keep in mind** that plugin folder name should be `sublime-display-nums`.
+Clone this repository or download zip archive into the Sublime 3 package directory (you can find it in menu option `Preferences -> Browse Packages...`). **Keep in mind** that plugin folder name should be `Display numbers`.
 
 ### Aditional functionality
 * Pressing any digit of binary number makes it opposit of it's current value.
