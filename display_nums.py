@@ -126,13 +126,13 @@ html_basic = """
         #swap {{ color: var(--yellowish); }}
         #bits {{ color: var(--foreground); }}
     </style>
-    <div>Hex: {hex}</div>
-    <div>Dec: {dec}</div>
-    <div>Oct: {oct}</div>
-    <div>Bin: {bin}</div>
+    <div>Hex:&nbsp;{hex}</div>
+    <div>Dec:&nbsp;{dec}</div>
+    <div>Oct:&nbsp;{oct}</div>
+    <div>Bin:&nbsp;{bin}</div>
     <div id='swap'><a id='swap' href='{{ "func": "swap_positions",
         "data": {{ "base":{base}, "num":{num} }}
-    }}'>swap</a> {pos}</div>
+    }}'>swap</a>&nbsp;{pos}</div>
 </body>
 """
 
@@ -146,19 +146,19 @@ html_extended = """
     </style>
     <div><a href='{{ "func": "convert_number",
         "data": {{ "base":16 }}
-    }}'>Hex</a>: {hex}</div>
+    }}'>Hex</a>:&nbsp;{hex}</div>
     <div><a href='{{ "func": "convert_number",
         "data": {{ "base":10 }}
-    }}'>Dec</a>: {dec}</div>
+    }}'>Dec</a>:&nbsp;{dec}</div>
     <div><a href='{{ "func": "convert_number",
         "data": {{ "base":8 }}
-    }}'>Oct</a>: {oct}</div>
+    }}'>Oct</a>:&nbsp;{oct}</div>
     <div><a href='{{ "func": "convert_number",
         "data": {{ "base":2 }}
-    }}'>Bin</a>: {bin}</div>
+    }}'>Bin</a>:&nbsp;{bin}</div>
     <div id='swap'><a id='swap' href='{{ "func": "swap_positions",
         "data": {{ "base":{base}, "num":{num} }}
-    }}'>swap</a> {pos}</div>
+    }}'>swap</a>&nbsp;{pos}</div>
     <div id='options'>Swap endianness as
         <a href='{{ "func": "swap_endianness", "data" : {{ "bits": 16 }} }}'>
         16 bit</a>
