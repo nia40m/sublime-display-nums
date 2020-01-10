@@ -43,10 +43,10 @@ def reverse_positions_reversed(project_settings):
         sublime.load_settings("display_nums.sublime-settings").set("bit_positions_reversed", not get_positions_reversed(project_settings))
 
 def get_popup_mode(project_settings):
-    extended = get_setting_by_name(project_settings, "extended_mode")
+    extended = get_setting_by_name(project_settings, "plugin_mode")
 
-    if not isinstance(extended, bool):
-        return False
+    if not isinstance(extended, str):
+        return "basic"
 
     return extended
 
@@ -171,9 +171,9 @@ def create_popup_content(settings, number, base):
     # select max between (bit_length in settings) and (bit_length of selected number aligned to 4)
     curr_bits_in_word = max(get_bits_in_word(settings), number.bit_length() + ((-number.bit_length()) & 0x3))
 
-    if get_popup_mode(settings):
+    if get_popup_mode(settings) == "extended":
         html = html_extended
-    else:
+    elif get_popup_mode(settings) == "basic":
         html = html_basic
 
     return html.format(

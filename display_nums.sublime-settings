@@ -5,8 +5,6 @@
     // reverse bit positions (needed in different architectures)
     "bit_positions_reversed": false,
 
-    // extended mode add to popup more buttons:
-    // - convert number
-    // - swap endianness
-    "extended_mode": false
+    // select mode from 'basic', 'extended' and 'tabled'
+    "plugin_mode": "extended"
 }
