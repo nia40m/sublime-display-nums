@@ -8,7 +8,14 @@
     // select mode from 'basic', 'extended' and 'tabled'
     "plugin_mode": "basic",
 
-    // causes the popup to hide when the mouse is moved (unless towards the popup),
+    // causes the pop-up to hide when the mouse is moved (unless towards the pop-up),
     // or when clicked or scrolled
-    "hide_on_mouse_move_away": true
+    "hide_on_mouse_move_away": true,
+
+    /////
+    // additional features to display in extended mode
+    /////
+
+    // swap endianness buttons
+    "addition_swap_endianness": false,
 }

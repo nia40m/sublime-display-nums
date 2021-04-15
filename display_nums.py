@@ -53,6 +53,14 @@ def get_mouse_move_option(project_settings):
 
     return sublime.HIDE_ON_MOUSE_MOVE_AWAY if mouse_move else 0
 
+def get_swap_addition(project_settings):
+    swap = get_setting_by_name(project_settings, "addition_swap_endianness")
+
+    if not isinstance(swap, bool):
+        return False
+
+    return swap
+
 #####
 # Pop-up string generators
 #####
@@ -152,18 +160,20 @@ def create_popup_content(settings, mode, number, base):
                 number
             ).replace(temp_small_space, small_space)
 
+    hex_name = "Hex"
+    dec_name = "Dec"
+    oct_name = "Oct"
+    bin_name = "Bin"
+    additional = ""
+
     if mode == "extended":
-        hex_name = str_convert_number.format(name="Hex",base=16)
-        dec_name = str_convert_number.format(name="Dec",base=10)
-        oct_name = str_convert_number.format(name="Oct",base=8)
-        bin_name = str_convert_number.format(name="Bin",base=2)
-        additional = feature_swap_endian
-    else:
-        hex_name = "Hex"
-        dec_name = "Dec"
-        oct_name = "Oct"
-        bin_name = "Bin"
-        additional = ""
+        hex_name = str_convert_number.format(name=hex_name,base=16)
+        dec_name = str_convert_number.format(name=dec_name,base=10)
+        oct_name = str_convert_number.format(name=oct_name,base=8)
+        bin_name = str_convert_number.format(name=bin_name,base=2)
+
+        if get_swap_addition(settings):
+            additional += feature_swap_endian
 
     return html_basic.format(
             hex_name = hex_name,
