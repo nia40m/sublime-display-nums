@@ -38,12 +38,6 @@ def get_positions_reversed(project_settings):
 
     return position_reversed
 
-def reverse_positions_reversed(project_settings):
-    if project_settings.has("disnum.bit_positions_reversed"):
-        project_settings.set("disnum.bit_positions_reversed", not get_positions_reversed(project_settings))
-    else:
-        sublime.load_settings("display_nums.sublime-settings").set("bit_positions_reversed", not get_positions_reversed(project_settings))
-
 def get_popup_mode(project_settings):
     extended = get_setting_by_name(project_settings, "plugin_mode")
 
@@ -186,8 +180,6 @@ def create_popup_content(settings, mode, number, base):
         additional = ""
 
     return html_basic.format(
-            num = number,
-            base = base,
             hex_name = hex_name,
             dec_name = dec_name,
             oct_name = oct_name,
@@ -306,12 +298,6 @@ class ChangeBitCommand(sublime_plugin.TextCommand):
     def run(self, edit, base, num, offset):
         selected_range = self.view.sel()[0]
         self.view.replace(edit, selected_range, convert_number(num ^ (1 << offset), base))
-
-class SwapPositionsCommand(sublime_plugin.TextCommand):
-    def run(self, edit, base, num):
-        reverse_positions_reversed(self.view.settings())
-
-        self.view.update_popup(create_popup_content(self.view.settings(), num, base))
 
 class SwapEndiannessCommand(sublime_plugin.TextCommand):
     def run(self, edit, bits):
