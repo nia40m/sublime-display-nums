@@ -132,67 +132,35 @@ html_basic = """
         span  {{ font-size: 0.35rem; }}
         #swap {{ color: var(--yellowish); }}
         #bits {{ color: var(--foreground); }}
+        #options {{ margin-top: 10px; }}
     </style>
-    <div>Hex:&nbsp;{hex}</div>
-    <div>Dec:&nbsp;{dec}</div>
-    <div>Oct:&nbsp;{oct}</div>
-    <div>Bin:&nbsp;{bin}</div>
-    <div id='swap'><a id='swap' href='{{ "func": "swap_positions",
-        "data": {{ "base":{base}, "num":{num} }}
-    }}'>swap</a>&nbsp;{pos}</div>
+    <div>{hex_name}:&nbsp;{hex_num}</div>
+    <div>{dec_name}:&nbsp;{dec_num}</div>
+    <div>{oct_name}:&nbsp;{oct_num}</div>
+    <div>{bin_name}:&nbsp;{bin_num}</div>
+    <div id='swap'>""" + "&nbsp;"*5 + """{pos}</div>
+    {additional}
 </body>
 """
 
-html_extended = """
-<body id='show'>
-    <style>
-        span  {{ font-size: 0.35rem; }}
-        #swap {{ color: var(--yellowish); }}
-        #bits {{ color: var(--foreground); }}
-        #options {{ margin-top: 10px; }}
-    </style>
-    <div><a href='{{ "func": "convert_number",
-        "data": {{ "base":16 }}
-    }}'>Hex</a>:&nbsp;{hex}</div>
-    <div><a href='{{ "func": "convert_number",
-        "data": {{ "base":10 }}
-    }}'>Dec</a>:&nbsp;{dec}</div>
-    <div><a href='{{ "func": "convert_number",
-        "data": {{ "base":8 }}
-    }}'>Oct</a>:&nbsp;{oct}</div>
-    <div><a href='{{ "func": "convert_number",
-        "data": {{ "base":2 }}
-    }}'>Bin</a>:&nbsp;{bin}</div>
-    <div id='swap'><a id='swap' href='{{ "func": "swap_positions",
-        "data": {{ "base":{base}, "num":{num} }}
-    }}'>swap</a>&nbsp;{pos}</div>
-    <div id='options'>Swap endianness as
-        <a href='{{ "func": "swap_endianness", "data" : {{ "bits": 16 }} }}'>
-        16 bit</a>
-        <a href='{{ "func": "swap_endianness", "data" : {{ "bits": 32 }} }}'>
-        32 bit</a>
-        <a href='{{ "func": "swap_endianness", "data" : {{ "bits": 64 }} }}'>
-        64 bit</a>
-    </div>
-</body>
+str_convert_number = """<a href='{{ "func": "convert_number","data": {{ "base":{base} }}}}'>{name}</a>"""
+
+feature_swap_endian = """
+<div id='options'>Swap endianness as
+    <a href='{ "func": "swap_endianness", "data" : { "bits": 16 } }'>16 bit</a>
+    <a href='{ "func": "swap_endianness", "data" : { "bits": 32 } }'>32 bit</a>
+    <a href='{ "func": "swap_endianness", "data" : { "bits": 64 } }'>64 bit</a>
+</div>
 """
 
 def create_popup_content(settings, mode, number, base):
     # select max between (bit_length in settings) and (bit_length of selected number aligned to 4)
     curr_bits_in_word = max(get_bits_in_word(settings), number.bit_length() + ((-number.bit_length()) & 0x3))
 
-    if mode == "extended":
-        html = html_extended
-    else:
-        html = html_basic
-
-    return html.format(
-            num = number,
-            base = base,
-            hex = format_str("{:x}".format(number), 2),
-            dec = format_str("{}".format(number), 3, ","),
-            oct = format_str("{:o}".format(number), 3),
-            bin = prepare_urls(
+    hex_num = format_str("{:x}".format(number), 2)
+    dec_num = format_str("{}".format(number), 3, ",")
+    oct_num = format_str("{:o}".format(number), 3)
+    bin_num = prepare_urls(
                 format_str(
                     format_str(
                         "{:0={}b}".format(number, curr_bits_in_word),
@@ -202,8 +170,34 @@ def create_popup_content(settings, mode, number, base):
                     temp_small_space),
                 base,
                 number
-            ).replace(temp_small_space, small_space),
-            pos = get_bits_positions(settings, curr_bits_in_word)
+            ).replace(temp_small_space, small_space)
+
+    if mode == "extended":
+        hex_name = str_convert_number.format(name="Hex",base=16)
+        dec_name = str_convert_number.format(name="Dec",base=10)
+        oct_name = str_convert_number.format(name="Oct",base=8)
+        bin_name = str_convert_number.format(name="Bin",base=2)
+        additional = feature_swap_endian
+    else:
+        hex_name = "Hex"
+        dec_name = "Dec"
+        oct_name = "Oct"
+        bin_name = "Bin"
+        additional = ""
+
+    return html_basic.format(
+            num = number,
+            base = base,
+            hex_name = hex_name,
+            dec_name = dec_name,
+            oct_name = oct_name,
+            bin_name = bin_name,
+            hex_num = hex_num,
+            dec_num = dec_num,
+            oct_num = oct_num,
+            bin_num = bin_num,
+            pos = get_bits_positions(settings, curr_bits_in_word),
+            additional = additional
         )
 
 def create_tabled_popup_content(number, hex_num):
