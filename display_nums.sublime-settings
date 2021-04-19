@@ -18,4 +18,7 @@
 
     // swap endianness buttons
     "addition_swap_endianness": false,
+
+    // interpret hex numbers as float and double formats (IEEE 754)
+    "addition_float_from_hex": false,
 }

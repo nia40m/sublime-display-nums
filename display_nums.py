@@ -1,6 +1,7 @@
 import sublime
 import sublime_plugin
 
+import struct
 import re
 import json
 
@@ -61,6 +62,14 @@ def get_swap_addition(project_settings):
 
     return swap
 
+def get_float_addition(project_settings):
+    float_nums = get_setting_by_name(project_settings, "addition_float_from_hex")
+
+    if not isinstance(float_nums, bool):
+        return False
+
+    return float_nums
+
 #####
 # Pop-up string generators
 #####
@@ -120,7 +129,7 @@ html_basic = """
         span  {{ font-size: 0.35rem; }}
         #swap {{ color: var(--yellowish); }}
         #bits {{ color: var(--foreground); }}
-        #options {{ margin-top: 10px; }}
+        #hr   {{ margin: 5px 0; }}
     </style>
     <div>{hex_name}:&nbsp;{hex_num}</div>
     <div>{dec_name}:&nbsp;{dec_num}</div>
@@ -131,6 +140,8 @@ html_basic = """
 </body>
 """
 
+html_hr = "<div id='hr'></div>"
+
 str_convert_number = """<a href='{{ "func": "convert_number","data": {{ "base":{base} }}}}'>{name}</a>"""
 
 feature_swap_endian = """
@@ -140,6 +151,17 @@ feature_swap_endian = """
     <a href='{ "func": "swap_endianness", "data" : { "bits": 64 } }'>64 bit</a>
 </div>
 """
+
+def feature_float_numbers(number, bits_count):
+    res = ""
+
+    if bits_count/8 <= 4:
+        res += "<div>Float:&nbsp;&nbsp;{}</div>".format(struct.unpack('!f',struct.pack('!I',number))[0])
+
+    if bits_count/8 <= 8:
+        res += "<div>Double:&nbsp;{}</div>".format(struct.unpack('!d',struct.pack('!Q',number))[0])
+
+    return res
 
 def create_popup_content(settings, mode, number, base):
     # select max between (bit_length in settings) and (bit_length of selected number aligned to 4)
@@ -173,7 +195,13 @@ def create_popup_content(settings, mode, number, base):
         bin_name = str_convert_number.format(name=bin_name,base=2)
 
         if get_swap_addition(settings):
+            additional += html_hr
             additional += feature_swap_endian
+
+        if base == 16 and get_float_addition(settings):
+            additional += html_hr
+            additional += feature_float_numbers(number, curr_bits_in_word)
+
 
     return html_basic.format(
             hex_name = hex_name,
