@@ -70,6 +70,22 @@ def get_float_addition(project_settings):
 
     return float_nums
 
+def get_size_addition(project_settings):
+    addition = get_setting_by_name(project_settings, "addition_size_in_bytes")
+
+    if not isinstance(addition, bool):
+        return False
+
+    return addition
+
+def get_size_precision(project_settings):
+    precision = get_setting_by_name(project_settings, "addition_size_precision")
+
+    if not isinstance(precision, int):
+        return 7
+
+    return precision
+
 #####
 # Pop-up string generators
 #####
@@ -152,6 +168,8 @@ feature_swap_endian = """
 </div>
 """
 
+str_size = "<div>Size: {:.{precision}g} {}</div>"
+
 def feature_float_numbers(number, bits_count):
     res = ""
 
@@ -162,6 +180,16 @@ def feature_float_numbers(number, bits_count):
         res += "<div>Double:&nbsp;{}</div>".format(struct.unpack('!d',struct.pack('!Q',number))[0])
 
     return res
+
+def feature_size(number, precision):
+    names = ['B','kB','MB','GB','TB','PB','EB','ZB','YB']
+    index = 0
+
+    while number >= 1024 and index < len(names) - 1:
+        number /= 1024
+        index += 1
+
+    return str_size.format(number, names[index], precision=precision)
 
 def create_popup_content(settings, mode, number, base):
     # select max between (bit_length in settings) and (bit_length of selected number aligned to 4)
@@ -202,6 +230,9 @@ def create_popup_content(settings, mode, number, base):
             additional += html_hr
             additional += feature_float_numbers(number, curr_bits_in_word)
 
+        if get_size_addition(settings):
+            additional += html_hr
+            additional += feature_size(number, get_size_precision(settings))
 
     return html_basic.format(
             hex_name = hex_name,
