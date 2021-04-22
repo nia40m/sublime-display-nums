@@ -343,7 +343,8 @@ class DisplayNumberListener(sublime_plugin.EventListener):
         view.show_popup(
             html,
             flags=get_mouse_move_option(view.settings()),
-            max_width = 1024,
+            max_width = 1366,
+            max_height = 768,
             location = view.sel()[0].begin(),
             on_navigate = select_function
         )
