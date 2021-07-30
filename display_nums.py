@@ -8,7 +8,7 @@ import json
 popup_mode_list = ["basic", "extended", "tabled"]
 
 split_re = re.compile(r"\B_\B", re.I)
-dec_re = re.compile(r"^(0|([1-9][0-9]*))(u|l|ul|lu|ll|ull|llu)?$", re.I)
+dec_re = re.compile(r"^(0|[1-9][0-9]*)(u|l|ul|lu|ll|ull|llu)?$", re.I)
 hex_re = re.compile(r"^0x([0-9a-f]+)(u|l|ul|lu|ll|ull|llu)?$", re.I)
 oct_re = re.compile(r"^(0[0-7]+)(u|l|ul|lu|ll|ull|llu)?$", re.I)
 bin_re = re.compile(r"^0b([01]+)(u|l|ul|lu|ll|ull|llu)?$", re.I)
@@ -119,18 +119,18 @@ def get_bits_positions(settings, curr_bits_in_word):
 
     return positions
 
-def prepare_urls(s, base, num):
+def prepare_urls(s):
     res = ""
     offset = 0
 
     bit = """<a id='bits' href='{{ "func":"{func}",
-        "data":{{ "num":{num}, "base":{base}, "offset":{offset} }}
+        "data":{{ "offset":{offset} }}
         }}'>{char}</a>"""
 
     for c in s[::-1]:
         if c.isdigit():
             res = bit.format(
-                func = "change_bit", num = num, base = base, offset = offset, char = c
+                func = "change_bit", offset = offset, char = c
                 ) + res
 
             offset += 1
@@ -205,9 +205,7 @@ def create_popup_content(settings, mode, number, base):
                         4,
                         temp_small_space),
                     1,
-                    temp_small_space),
-                base,
-                number
+                    temp_small_space)
             ).replace(temp_small_space, small_space)
 
     hex_name = "Hex"
@@ -291,19 +289,35 @@ def parse_number(text):
 
     match = dec_re.match(text)
     if match:
-        return {"number": int(match.group(1), 10), "base": 10}
+        return {
+            "number": int(match.group(1), 10),
+            "base": 10,
+            "suffix": match.group(2) or ""
+        }
 
     match = hex_re.match(text)
     if match:
-        return {"number": int(match.group(1), 16), "base": 16}
+        return {
+            "number": int(match.group(1), 16),
+            "base": 16,
+            "suffix": match.group(2) or ""
+        }
 
     match = oct_re.match(text)
     if match:
-        return {"number": int(match.group(1), 8), "base": 8}
+        return {
+            "number": int(match.group(1), 8),
+            "base": 8,
+            "suffix": match.group(2) or ""
+        }
 
     match = bin_re.match(text)
     if match:
-        return {"number": int(match.group(1), 2), "base": 2}
+        return {
+            "number": int(match.group(1), 2),
+            "base": 2,
+            "suffix": match.group(2) or ""
+        }
 
 class DisplayNumberListener(sublime_plugin.EventListener):
     def on_selection_modified_async(self, view):
@@ -352,15 +366,15 @@ class DisplayNumberListener(sublime_plugin.EventListener):
 #####
 # Sublime commands
 #####
-def convert_number(num, base):
-    if base == 10:
-        return "{:d}".format(num)
-    elif base == 16:
-        return "0x{:x}".format(num)
-    elif base == 2:
-        return "0b{:b}".format(num)
+def convert_number(parsed):
+    if parsed["base"] == 10:
+        return "{:d}{}".format(parsed["number"], parsed["suffix"])
+    elif parsed["base"] == 16:
+        return "0x{:x}{}".format(parsed["number"], parsed["suffix"])
+    elif parsed["base"] == 2:
+        return "0b{:b}{}".format(parsed["number"], parsed["suffix"])
     else:
-        return "0{:o}".format(num)
+        return "0{:o}{}".format(parsed["number"], parsed["suffix"])
 
 class ConvertNumberCommand(sublime_plugin.TextCommand):
     def run(self, edit, base):
@@ -374,12 +388,22 @@ class ConvertNumberCommand(sublime_plugin.TextCommand):
         if parsed is None:
             return self.view.hide_popup()
 
-        self.view.replace(edit, selected_range, convert_number(parsed["number"], base))
+        parsed["base"] = base
+
+        self.view.replace(edit, selected_range, convert_number(parsed))
 
 class ChangeBitCommand(sublime_plugin.TextCommand):
-    def run(self, edit, base, num, offset):
+    def run(self, edit, offset):
         selected_range = self.view.sel()[0]
-        self.view.replace(edit, selected_range, convert_number(num ^ (1 << offset), base))
+        selected_number = self.view.substr(selected_range).strip()
+
+        parsed = parse_number(selected_number)
+        if parsed is None:
+            return self.view.hide_popup()
+
+        parsed["number"] = parsed["number"] ^ (1 << offset)
+
+        self.view.replace(edit, selected_range, convert_number(parsed))
 
 class SwapEndiannessCommand(sublime_plugin.TextCommand):
     def run(self, edit, bits):
@@ -411,4 +435,6 @@ class SwapEndiannessCommand(sublime_plugin.TextCommand):
 
         result = int.from_bytes(bytes(result), byteorder="big")
 
-        self.view.replace(edit, selected_range, convert_number(result, parsed["base"]))
+        parsed["number"] = result
+
+        self.view.replace(edit, selected_range, convert_number(parsed))
