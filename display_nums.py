@@ -292,45 +292,17 @@ def parse_number(text):
     # remove underscores in the number
     text = "".join(split_re.split(text))
 
-    match = dec_re.match(text)
-    if match:
-        return {
-            "number": int(match.group(1), 10),
-            "base": 10,
-            "suffix": match.group(2) or "",
-            "underscores": underscores,
-            "length": len(match.group(1))
-        }
+    for reg, base in [(dec_re,10), (hex_re,16), (oct_re,8), (bin_re,2)]:
+        match = reg.match(text)
 
-    match = hex_re.match(text)
-    if match:
-        return {
-            "number": int(match.group(1), 16),
-            "base": 16,
-            "suffix": match.group(2) or "",
-            "underscores": underscores,
-            "length": len(match.group(1))
-        }
-
-    match = oct_re.match(text)
-    if match:
-        return {
-            "number": int(match.group(1), 8),
-            "base": 8,
-            "suffix": match.group(2) or "",
-            "underscores": underscores,
-            "length": len(match.group(1))
-        }
-
-    match = bin_re.match(text)
-    if match:
-        return {
-            "number": int(match.group(1), 2),
-            "base": 2,
-            "suffix": match.group(2) or "",
-            "underscores": underscores,
-            "length": len(match.group(1))
-        }
+        if match:
+            return {
+                "number": int(match.group(1), base),
+                "base": base,
+                "suffix": match.group(2) or "",
+                "underscores": underscores,
+                "length": len(match.group(1))
+            }
 
 class DisplayNumberListener(sublime_plugin.EventListener):
     def on_selection_modified_async(self, view):
