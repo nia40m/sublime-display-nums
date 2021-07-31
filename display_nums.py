@@ -298,7 +298,8 @@ def parse_number(text):
             "number": int(match.group(1), 10),
             "base": 10,
             "suffix": match.group(2) or "",
-            "underscores": underscores
+            "underscores": underscores,
+            "length": len(match.group(1))
         }
 
     match = hex_re.match(text)
@@ -307,7 +308,8 @@ def parse_number(text):
             "number": int(match.group(1), 16),
             "base": 16,
             "suffix": match.group(2) or "",
-            "underscores": underscores
+            "underscores": underscores,
+            "length": len(match.group(1))
         }
 
     match = oct_re.match(text)
@@ -316,7 +318,8 @@ def parse_number(text):
             "number": int(match.group(1), 8),
             "base": 8,
             "suffix": match.group(2) or "",
-            "underscores": underscores
+            "underscores": underscores,
+            "length": len(match.group(1))
         }
 
     match = bin_re.match(text)
@@ -325,7 +328,8 @@ def parse_number(text):
             "number": int(match.group(1), 2),
             "base": 2,
             "suffix": match.group(2) or "",
-            "underscores": underscores
+            "underscores": underscores,
+            "length": len(match.group(1))
         }
 
 class DisplayNumberListener(sublime_plugin.EventListener):
@@ -375,19 +379,23 @@ class DisplayNumberListener(sublime_plugin.EventListener):
 #####
 # Sublime commands
 #####
-def convert_number(parsed):
+def convert_number(parsed, width=0):
     if parsed["base"] == 10:
         prefix = ""
-        num = format_str("{:d}".format(parsed["number"]), 3, parsed["underscores"])
+        num = "{:d}".format(parsed["number"])
+        num = format_str(num, 3, parsed["underscores"])
     elif parsed["base"] == 16:
         prefix = "0x"
-        num = format_str("{:x}".format(parsed["number"]), 4, parsed["underscores"])
+        num = "{:0{width}x}".format(parsed["number"], width=width)
+        num = format_str(num, 4, parsed["underscores"])
     elif parsed["base"] == 2:
         prefix = "0b"
-        num = format_str("{:b}".format(parsed["number"]), 4, parsed["underscores"])
+        num = "{:0{width}b}".format(parsed["number"], width=width)
+        num = format_str(num, 4, parsed["underscores"])
     else:
         prefix = "0"
-        num = format_str("{:o}".format(parsed["number"]), 4, parsed["underscores"])
+        num = "{:o}".format(parsed["number"])
+        num = format_str(num, 4, parsed["underscores"])
 
     return "{}{}{}".format(prefix, num, parsed["suffix"])
 
@@ -418,7 +426,7 @@ class ChangeBitCommand(sublime_plugin.TextCommand):
 
         parsed["number"] = parsed["number"] ^ (1 << offset)
 
-        self.view.replace(edit, selected_range, convert_number(parsed))
+        self.view.replace(edit, selected_range, convert_number(parsed, width=parsed["length"]))
 
 class SwapEndiannessCommand(sublime_plugin.TextCommand):
     def run(self, edit, bits):
