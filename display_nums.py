@@ -284,6 +284,11 @@ def create_tabled_popup_content(number, hex_num):
 # Main listener of selection event
 #####
 def parse_number(text):
+    if "_" in text:
+        underscores = "_"
+    else:
+        underscores = ""
+
     # remove underscores in the number
     text = "".join(split_re.split(text))
 
@@ -292,7 +297,8 @@ def parse_number(text):
         return {
             "number": int(match.group(1), 10),
             "base": 10,
-            "suffix": match.group(2) or ""
+            "suffix": match.group(2) or "",
+            "underscores": underscores
         }
 
     match = hex_re.match(text)
@@ -300,7 +306,8 @@ def parse_number(text):
         return {
             "number": int(match.group(1), 16),
             "base": 16,
-            "suffix": match.group(2) or ""
+            "suffix": match.group(2) or "",
+            "underscores": underscores
         }
 
     match = oct_re.match(text)
@@ -308,7 +315,8 @@ def parse_number(text):
         return {
             "number": int(match.group(1), 8),
             "base": 8,
-            "suffix": match.group(2) or ""
+            "suffix": match.group(2) or "",
+            "underscores": underscores
         }
 
     match = bin_re.match(text)
@@ -316,7 +324,8 @@ def parse_number(text):
         return {
             "number": int(match.group(1), 2),
             "base": 2,
-            "suffix": match.group(2) or ""
+            "suffix": match.group(2) or "",
+            "underscores": underscores
         }
 
 class DisplayNumberListener(sublime_plugin.EventListener):
@@ -368,13 +377,19 @@ class DisplayNumberListener(sublime_plugin.EventListener):
 #####
 def convert_number(parsed):
     if parsed["base"] == 10:
-        return "{:d}{}".format(parsed["number"], parsed["suffix"])
+        prefix = ""
+        num = format_str("{:d}".format(parsed["number"]), 3, parsed["underscores"])
     elif parsed["base"] == 16:
-        return "0x{:x}{}".format(parsed["number"], parsed["suffix"])
+        prefix = "0x"
+        num = format_str("{:x}".format(parsed["number"]), 4, parsed["underscores"])
     elif parsed["base"] == 2:
-        return "0b{:b}{}".format(parsed["number"], parsed["suffix"])
+        prefix = "0b"
+        num = format_str("{:b}".format(parsed["number"]), 4, parsed["underscores"])
     else:
-        return "0{:o}{}".format(parsed["number"], parsed["suffix"])
+        prefix = "0"
+        num = format_str("{:o}".format(parsed["number"]), 4, parsed["underscores"])
+
+    return "{}{}{}".format(prefix, num, parsed["suffix"])
 
 class ConvertNumberCommand(sublime_plugin.TextCommand):
     def run(self, edit, base):
