@@ -12,6 +12,7 @@ dec_re = re.compile(r"^(0|[1-9][0-9]*)(u|l|ul|lu|ll|ull|llu)?$", re.I)
 hex_re = re.compile(r"^0x([0-9a-f]+)(u|l|ul|lu|ll|ull|llu)?$", re.I)
 oct_re = re.compile(r"^(0[0-7]+)(u|l|ul|lu|ll|ull|llu)?$", re.I)
 bin_re = re.compile(r"^0b([01]+)(u|l|ul|lu|ll|ull|llu)?$", re.I)
+signed_re = re.compile(r"^(-[1-9][0-9]*)(u|l|ul|lu|ll|ull|llu)?$", re.I)
 
 #####
 # Sublime settings getters
@@ -297,6 +298,9 @@ def create_tabled_popup_content(number, hex_num):
 #####
 # Main listener of selection event
 #####
+def tohex(val, nbits):
+    return hex((val + (1 << nbits)) % (1 << nbits))
+
 def parse_number(text):
     if "_" in text:
         underscores = "_"
@@ -317,6 +321,22 @@ def parse_number(text):
                 "underscores": underscores,
                 "length": len(match.group(1))
             }
+
+    match = signed_re.match(text)
+    if match:
+        base = 10
+        neg_num = int(match.group(1), base)
+        bits = get_closer_bits_num((abs(neg_num) - 1).bit_length())
+        hex_str = tohex(neg_num, bits)
+
+        return {
+            "number": int(hex_str, 16),
+            "base": base,
+            "suffix": match.group(2) or "",
+            "underscores": underscores,
+            "length": len(hex_str) - 2
+        }
+
 
 class DisplayNumberListener(sublime_plugin.EventListener):
     def on_selection_modified_async(self, view):
