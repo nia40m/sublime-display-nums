@@ -191,6 +191,13 @@ def feature_size(number, precision):
 
     return str_size.format(number, names[index], precision=precision)
 
+def get_closer_bits_num(curr_bits):
+    i = 8 # bits number in byte
+    while i <= curr_bits:
+        i <<= 1
+
+    return i
+
 def create_popup_content(settings, mode, number, base):
     # select max between (bit_length in settings) and (bit_length of selected number aligned to 4)
     curr_bits_in_word = max(get_bits_in_word(settings), number.bit_length() + ((-number.bit_length()) & 0x3))
@@ -207,6 +214,13 @@ def create_popup_content(settings, mode, number, base):
                     1,
                     temp_small_space)
             ).replace(temp_small_space, small_space)
+
+    # check if number can be negative
+    sign_bit = get_closer_bits_num((number // 2).bit_length()) - 1
+    if number & (1 << sign_bit):
+        mask = (2 ** (sign_bit + 1)) - number
+
+        dec_num += " (-{})".format(mask)
 
     hex_name = "Hex"
     dec_name = "Dec"
