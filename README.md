@@ -30,6 +30,9 @@ Displays selected number in hex format as IEEE 754:
 
 ### Addition: interpret number as size in bytes
 
+### Addition: bit shifting
+Display buttons to shift the number left or right by one bit.
+
 ## Installation
 Clone this repository or download zip archive into the Sublime 3 package directory (you can find it in menu option `Preferences -> Browse Packages...`). **Keep in mind** that plugin folder name should be `Display numbers`.
 
