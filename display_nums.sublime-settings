@@ -26,4 +26,7 @@
     "addition_size_in_bytes": false,
     // size float point precision
     "addition_size_precision": 7,
+
+    // one bit left or right shift buttons
+    "addition_shift_bit": false,
 }

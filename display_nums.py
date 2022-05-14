@@ -78,6 +78,14 @@ def get_size_addition(project_settings):
 
     return addition
 
+def get_shift_addition(project_settings):
+    addition = get_setting_by_name(project_settings, "addition_shift_bit")
+
+    if not isinstance(addition, bool):
+        return False
+
+    return addition
+
 def get_size_precision(project_settings):
     precision = get_setting_by_name(project_settings, "addition_size_precision")
 
@@ -191,6 +199,12 @@ def feature_size(number, precision):
 
     return str_size.format(number, names[index], precision=precision)
 
+def feature_shift_bit():
+    left = """<a href='{ "func": "shift_bits", "data" : { "direction": "left" } }'>left</a>"""
+    right = """<a href='{ "func": "shift_bits", "data" : { "direction": "right" } }'>right</a>"""
+
+    return "<div>Bit shift:&nbsp;"+left+"&nbsp;"+right+"</div>"
+
 def get_closer_bits_num(curr_bits):
     i = 8 # bits number in byte
     while i <= curr_bits:
@@ -245,6 +259,10 @@ def create_popup_content(settings, mode, number, base):
         if get_size_addition(settings):
             additional += html_hr
             additional += feature_size(number, get_size_precision(settings))
+
+        if number != 0 and get_shift_addition(settings):
+            additional += html_hr
+            additional += feature_shift_bit()
 
     return html_basic.format(
             hex_name = hex_name,
@@ -445,5 +463,21 @@ class SwapEndiannessCommand(sublime_plugin.TextCommand):
         result = int.from_bytes(bytes(result), byteorder="big")
 
         parsed["number"] = result
+
+        self.view.replace(edit, selected_range, convert_number(parsed))
+
+class ShiftBitsCommand(sublime_plugin.TextCommand):
+    def run(self, edit, direction):
+        selected_range = self.view.sel()[0]
+        selected_number = self.view.substr(selected_range).strip()
+
+        parsed = parse_number(selected_number)
+        if parsed is None:
+            return self.view.hide_popup()
+
+        if direction == "left":
+            parsed["number"] = parsed["number"] << 1
+        else:
+            parsed["number"] = parsed["number"] >> 1
 
         self.view.replace(edit, selected_range, convert_number(parsed))
